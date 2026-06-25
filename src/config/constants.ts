@@ -19,7 +19,7 @@ export const STORAGE_KEYS = {
   ACTIVE_UID: `${STORAGE_PREFIX}_active_storage_uid`,
 } as const;
 
-export const DEFAULT_COURT_COUNT = 4;
+export const DEFAULT_COURT_COUNT = 1;
 export const DEFAULT_ORGANIZER_NAME = 'Queue Master';
 
 /** Default manual DUPR-style rating for new players (queue balancing only). */

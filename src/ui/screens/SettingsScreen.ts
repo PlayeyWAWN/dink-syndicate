@@ -83,8 +83,6 @@ export function renderSettingsScreen(container: HTMLElement): void {
 
   const settingsUi = useSettingsUiStore.getState();
 
-  const orgSection = el('div', { className: 'card settings-section settings-section--static' });
-  orgSection.append(el('h3', {}, ['Organizer']));
   const orgInput = el('input', {
     type: 'text',
     value: session?.organizerName ?? '',
@@ -96,7 +94,12 @@ export function renderSettingsScreen(container: HTMLElement): void {
     useSessionStore.getState().setOrganizerName(orgInput.value);
     appRouter.navigate('settings');
   });
-  orgSection.append(orgInput, orgSave);
+
+  const orgSection = renderSettingsCollapsibleSection([orgInput, orgSave], {
+    title: 'Organizer',
+    open: settingsUi.organizerSectionOpen,
+    onToggle: (open) => useSettingsUiStore.getState().setOrganizerSectionOpen(open),
+  });
 
   const startField = el('div', { className: 'player-form__field' });
   startField.append(el('label', { className: 'player-form__label', for: 'session-start-time' }, [
