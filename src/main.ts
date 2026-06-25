@@ -2,6 +2,7 @@ import '../css/index.css';
 import { bootstrapApp } from '@/app/bootstrap';
 import { registerServiceWorker } from '@/lib/offline-utils';
 import { initPwaInstallListener, shouldShowInstallUi, subscribePwaInstall } from '@/lib/pwa-install';
+import { startPeriodicVersionCheck } from '@/lib/version-check';
 import { appRouter } from '@/app/router';
 
 initPwaInstallListener();
@@ -12,6 +13,7 @@ subscribePwaInstall(() => {
 });
 
 async function main(): Promise<void> {
+  startPeriodicVersionCheck();
   await bootstrapApp();
   await registerServiceWorker();
 }

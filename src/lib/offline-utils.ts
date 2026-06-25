@@ -1,16 +1,53 @@
-/** Register service worker after first successful load — never clears caches on refresh. */
+import {
+  applyServiceWorkerVersionUpgrade,
+  refreshDinkSyndicateApp,
+} from '@/lib/version-check';
+
+function activateWaitingWorker(registration: ServiceWorkerRegistration, reason: string): void {
+  if (!registration.waiting) return;
+  console.info('[Dink] Activating waiting service worker', { reason });
+  registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+  setTimeout(() => refreshDinkSyndicateApp(reason), 500);
+}
+
+function listenForServiceWorkerMessages(): void {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data as { type?: string; newVersion?: string } | null;
+    if (data?.type !== 'VERSION_UPDATED' || !data.newVersion) return;
+    console.info('[Dink] Service worker reported version update', data.newVersion);
+    applyServiceWorkerVersionUpgrade(data.newVersion);
+  });
+}
+
+/** Register service worker and auto-activate updates (immediate reload on new version). */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null;
 
+  listenForServiceWorkerMessages();
+
   try {
+    const hadControllerBefore = Boolean(navigator.serviceWorker.controller);
     const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
+    await registration.update();
+
+    if (registration.waiting) {
+      activateWaitingWorker(registration, 'sw-waiting-activated');
+    }
+
     registration.addEventListener('updatefound', () => {
-      const installing = registration.installing;
-      if (!installing) return;
-      installing.addEventListener('statechange', () => {
-        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-          console.info('[Dink] New service worker installed — refresh when convenient');
+      const newWorker = registration.installing;
+      if (!newWorker) return;
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        if (newWorker.state === 'activated' && hadControllerBefore) {
+          refreshDinkSyndicateApp('sw-new-worker-activated');
         }
       });
     });
