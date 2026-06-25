@@ -437,9 +437,9 @@ export function renderSettingsScreen(container: HTMLElement): void {
   loadTestRosterBtn.addEventListener('click', () => {
     const confirmed = window.confirm(
       `Add ${TEST_ROSTER_SIZE} dummy players for matchmaking tests?\n\n` +
-        '• Names: "Test Player 001" … "Test Player 125"\n' +
+        '• Realistic names with a balanced male/female mix\n' +
         '• DUPR spread: ~2.0 beginner through ~5.2 expert\n' +
-        '• Alternating male / female, all checked in\n\n' +
+        '• All checked in and ready to queue\n\n' +
         'Existing players are kept. Names already in use are skipped.'
     );
     if (!confirmed) return;
@@ -515,7 +515,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
       ]),
       testRosterHeading,
       el('p', { className: 'screen-lead' }, [
-        `Load ${TEST_ROSTER_SIZE} checked-in dummy players with varied DUPR ratings to stress-test Find Match.`,
+        `Load ${TEST_ROSTER_SIZE} checked-in players with realistic names and varied DUPR ratings to stress-test Find Match.`,
       ]),
       testRosterActions,
       rosterActions,

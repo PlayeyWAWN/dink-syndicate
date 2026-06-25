@@ -1,19 +1,73 @@
 import { createPlayer, Player, PlayerGender } from '@/types/player';
 
-export const TEST_ROSTER_SIZE = 125;
+export const TEST_ROSTER_SIZE = 50;
 
 /** Skill-tier buckets — totals sum to TEST_ROSTER_SIZE. */
 const TEST_ROSTER_TIERS = [
-  { count: 28, base: 2.0, step: 0.12 },
-  { count: 32, base: 3.0, step: 0.1 },
-  { count: 35, base: 4.0, step: 0.1 },
-  { count: 30, base: 5.0, step: 0.08 },
+  { count: 11, base: 2.0, step: 0.12 },
+  { count: 13, base: 3.0, step: 0.1 },
+  { count: 14, base: 4.0, step: 0.1 },
+  { count: 12, base: 5.0, step: 0.08 },
+] as const;
+
+const MALE_NAMES = [
+  'Marcus Chen',
+  'James Rivera',
+  'David Okonkwo',
+  'Michael Torres',
+  'Ryan Patel',
+  'Daniel Kim',
+  'Chris Nguyen',
+  'Andrew Brooks',
+  'Kevin Walsh',
+  'Brian Foster',
+  'Jason Lewis',
+  'Eric Thompson',
+  'Adam Garcia',
+  'Nathan Reed',
+  'Tyler Morgan',
+  'Brandon Scott',
+  'Justin Hayes',
+  'Aaron Price',
+  'Derek Coleman',
+  'Gregory Bennett',
+  'Patrick Sullivan',
+  'Timothy Ross',
+  'Steven Butler',
+  'Kenneth Powell',
+  'Benjamin Hughes',
+] as const;
+
+const FEMALE_NAMES = [
+  'Sarah Mitchell',
+  'Emily Nguyen',
+  'Jessica Brooks',
+  'Ashley Patel',
+  'Amanda Torres',
+  'Nicole Kim',
+  'Stephanie Chen',
+  'Rachel Rivera',
+  'Lauren Walsh',
+  'Megan Foster',
+  'Hannah Lewis',
+  'Olivia Thompson',
+  'Sophia Garcia',
+  'Emma Reed',
+  'Ava Morgan',
+  'Isabella Scott',
+  'Mia Hayes',
+  'Charlotte Price',
+  'Amelia Coleman',
+  'Harper Bennett',
+  'Evelyn Sullivan',
+  'Abigail Ross',
+  'Ella Butler',
+  'Grace Powell',
+  'Chloe Hughes',
 ] as const;
 
 export interface GenerateTestRosterOptions {
   count?: number;
-  /** Prefix for generated names — default "Test Player". */
-  namePrefix?: string;
   /** When true, all dummy players start checked in and available. */
   checkIn?: boolean;
 }
@@ -36,21 +90,22 @@ function genderForIndex(index: number): PlayerGender {
   return index % 2 === 0 ? 'male' : 'female';
 }
 
-function testPlayerName(prefix: string, index: number): string {
-  return `${prefix} ${String(index + 1).padStart(3, '0')}`;
+function testPlayerName(index: number): string {
+  const gender = genderForIndex(index);
+  const slot = Math.floor(index / 2);
+  return gender === 'male' ? MALE_NAMES[slot] : FEMALE_NAMES[slot];
 }
 
-/** Build dummy players with spread DUPR ratings and alternating gender. */
+/** Build dummy players with spread DUPR ratings, realistic names, and balanced gender. */
 export function generateTestRoster(options: GenerateTestRosterOptions = {}): Player[] {
   const count = options.count ?? TEST_ROSTER_SIZE;
-  const prefix = options.namePrefix ?? 'Test Player';
   const checkIn = options.checkIn ?? true;
   const ratings = ratingsForCount(count);
 
   return ratings.map((duprDoublesRating, index) =>
     createPlayer({
       id: `test-roster-${index + 1}`,
-      name: testPlayerName(prefix, index),
+      name: testPlayerName(index),
       gender: genderForIndex(index),
       duprDoublesRating,
       checkedIn: checkIn,
