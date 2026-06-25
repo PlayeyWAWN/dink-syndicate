@@ -18,13 +18,15 @@ const COLORS = {
 
 /** Renders a horizontal top-down court matching the reference layout. */
 export function renderPickleballCourtSvg(options: CourtSvgOptions = {}): string {
-  const width = options.width ?? 520;
-  const height = options.height ?? 280;
   const active = options.active ?? false;
   const kitchen = active ? COLORS.kitchenActive : COLORS.kitchen;
   const label = options.label ?? 'Pickleball court';
+  const sizeAttrs =
+    options.width != null && options.height != null
+      ? ` width="${options.width}" height="${options.height}"`
+      : '';
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 280" width="${width}" height="${height}" role="img" aria-label="${label}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 280"${sizeAttrs} role="img" aria-label="${label}">
   <rect x="8" y="8" width="504" height="264" rx="6" fill="${COLORS.surface}" stroke="${COLORS.surfaceBorder}" stroke-width="2"/>
   <rect x="16" y="16" width="488" height="248" fill="${COLORS.surface}"/>
   <rect x="196" y="16" width="64" height="248" fill="${kitchen}"/>

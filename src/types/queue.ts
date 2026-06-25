@@ -63,12 +63,18 @@ export const QueueStateSchema = z.object({
   completedMatches: z.array(MatchSchema).default([]),
   winLoseStack: WinLoseStackStateSchema.optional(),
   ladderWaterfall: LadderWaterfallStateSchema.optional(),
-  /** When true, stack/ladder modes do not auto-start matches (session wrap-up). */
-  rotationPaused: z.boolean().default(false).optional(),
+  /** When false, stack/ladder auto-rotation is on. Omitted or true = manual mode (default). */
+  rotationPaused: z.boolean().optional(),
 });
 
 export type QueueState = z.infer<typeof QueueStateSchema>;
 
+/** Manual mode — auto-rotation off unless explicitly enabled (`rotationPaused: false`). */
 export function isRotationPaused(state: QueueState | undefined): boolean {
-  return state?.rotationPaused === true;
+  if (!state) return true;
+  return state.rotationPaused !== false;
+}
+
+export function isAutoRotationEnabled(state: QueueState | undefined): boolean {
+  return !isRotationPaused(state);
 }

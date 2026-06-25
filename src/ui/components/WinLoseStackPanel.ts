@@ -3,7 +3,7 @@ import { pickleballIconHtml } from '@/ui/icons/pickleball-icon';
 import { useQueueStore } from '@/stores/queueStore';
 import { useCourtStore } from '@/stores/courtStore';
 import { Player } from '@/types/player';
-import { QueueState } from '@/types/queue';
+import { isRotationPaused, QueueState } from '@/types/queue';
 import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
 import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 import {
@@ -60,9 +60,9 @@ function renderStackColumn(
 export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTMLElement {
   const { queueState, players, openCourtCount, activeMatchCount, onNavigate } = options;
   const stack = ensureWinLoseStackState(queueState.winLoseStack);
-  const rotationPaused = queueState.rotationPaused === true;
+  const autoRotationOn = !isRotationPaused(queueState);
   const blockReason = getStackStartBlockReason(queueState, openCourtCount, activeMatchCount);
-  const canStart = !rotationPaused && blockReason == null;
+  const canStart = blockReason == null;
 
   const section = el('section', { className: 'queue-section queue-section--stacks' });
   section.append(
@@ -78,7 +78,7 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
     ])
   );
 
-  section.append(renderRotationControls({ onNavigate }));
+  section.append(renderRotationControls({ onNavigate, mode: 'stack' }));
 
   const statsRow = el('div', { className: 'stat-grid queue-section__stats queue-stat-grid' });
   statsRow.append(
@@ -126,12 +126,6 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   startBtn.innerHTML = `${pickleballIconHtml()}<span>Start next game</span>`;
 
   startBtn.addEventListener('click', () => {
-    if (useQueueStore.getState().queueState.rotationPaused) {
-      alert('Rotation is paused. Tap Resume rotation or end the session from Settings.');
-      onNavigate();
-      return;
-    }
-
     const courts = useCourtStore.getState().courts;
     const openCourt = courts.find((court) => !court.activeMatchId);
     const liveState = useQueueStore.getState().queueState;
@@ -153,7 +147,10 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       return;
     }
 
-    const started = useQueueStore.getState().tryStartWinLoseStackMatch(openCourt.id);
+    const manual = isRotationPaused(liveState);
+    const started = useQueueStore
+      .getState()
+      .tryStartWinLoseStackMatch(openCourt.id, { manual });
     if (!started) {
       alert(
         `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack and an open court.`
@@ -164,7 +161,7 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
 
   actions.append(startBtn);
 
-  if (activeMatchCount > 0) {
+  if (activeMatchCount > 0 && autoRotationOn) {
     actions.append(
       el('p', { className: 'screen-lead win-lose-stack__hint' }, [
         'Recording a winner auto-starts the next game when the Next-Up stack has enough players.',

@@ -2,6 +2,10 @@ import { createPlayer, Player, PlayerGender } from '@/types/player';
 
 export const TEST_ROSTER_SIZE = 50;
 
+export const TEST_ROSTER_COUNT_OPTIONS = [8, 16, 24, 32, 50] as const;
+
+export type TestRosterCountOption = (typeof TEST_ROSTER_COUNT_OPTIONS)[number];
+
 /** Skill-tier buckets — totals sum to TEST_ROSTER_SIZE. */
 const TEST_ROSTER_TIERS = [
   { count: 11, base: 2.0, step: 0.12 },

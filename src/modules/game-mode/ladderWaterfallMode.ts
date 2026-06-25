@@ -12,7 +12,7 @@ import {
   emptyLadderWaterfallState,
   LadderWaterfallState,
 } from '@/types/ladder-waterfall';
-import { Match, QueueState } from '@/types/queue';
+import { isRotationPaused, Match, QueueState } from '@/types/queue';
 import { isPlayerMatchable, Player } from '@/types/player';
 
 export const LADDER_PLAYERS_PER_COURT = 4;
@@ -47,6 +47,94 @@ function sortPlayerIdsByDuprDesc(playerIds: string[], players: Player[]): string
   return [...playerIds].sort(
     (a, b) => duprDoublesRating(byId.get(b)!) - duprDoublesRating(byId.get(a)!)
   );
+}
+
+/** Fewest games first — used for waiting pool order and bench backfill. */
+export function sortWaitingPoolByFairness(poolIds: string[], players: Player[]): string[] {
+  const byId = new Map(players.map((player) => [player.id, player]));
+  return [...poolIds].sort((a, b) => {
+    const playerA = byId.get(a);
+    const playerB = byId.get(b);
+    const gamesA = playerA?.gamesPlayed ?? 0;
+    const gamesB = playerB?.gamesPlayed ?? 0;
+    if (gamesA !== gamesB) return gamesA - gamesB;
+    const duprA = playerA ? duprDoublesRating(playerA) : 0;
+    const duprB = playerB ? duprDoublesRating(playerB) : 0;
+    if (duprB !== duprA) return duprB - duprA;
+    return (playerA?.name ?? '').localeCompare(playerB?.name ?? '');
+  });
+}
+
+/** Next players due in from the waiting pool (fewest session games first). */
+export function getLadderUpNextPlayerIds(
+  state: QueueState,
+  players: Player[],
+  count = LADDER_PLAYERS_PER_COURT
+): string[] {
+  const ladder = state.ladderWaterfall;
+  if (!ladder || ladder.waitingPool.length === 0) return [];
+  return sortWaitingPoolByFairness(ladder.waitingPool, players).slice(0, count);
+}
+
+function pickCourtForPoolFill(ladder: LadderWaterfallState, courts: Court[]): string | null {
+  let chosen: { courtId: string; openSlots: number; rank: number } | null = null;
+
+  for (const court of courts) {
+    const onBench = countBenchPlayers(ladder, court.id);
+    if (onBench >= LADDER_PLAYERS_PER_COURT) continue;
+
+    const openSlots = LADDER_PLAYERS_PER_COURT - onBench;
+    const rank = getCourtRank(courts, court.id);
+    if (
+      !chosen ||
+      openSlots > chosen.openSlots ||
+      (openSlots === chosen.openSlots && rank > chosen.rank)
+    ) {
+      chosen = { courtId: court.id, openSlots, rank };
+    }
+  }
+
+  return chosen?.courtId ?? null;
+}
+
+/** Move waiting-pool players onto open bench slots (fewest games played first). */
+export function fillLadderBenchesFromWaitingPool(
+  state: QueueState,
+  courts: Court[],
+  players: Player[]
+): QueueState {
+  if (courts.length === 0) return state;
+
+  let ladder = ensureLadderWaterfallState(state.ladderWaterfall);
+  let pool = sortWaitingPoolByFairness(ladder.waitingPool, players);
+
+  while (pool.length > 0) {
+    const targetCourtId = pickCourtForPoolFill(ladder, courts);
+    if (!targetCourtId) break;
+
+    const nextId = pool.shift();
+    if (!nextId) break;
+
+    ladder = appendToBench(ladder, targetCourtId, [nextId]);
+  }
+
+  return {
+    ...state,
+    ladderWaterfall: {
+      ...ladder,
+      waitingPool: pool,
+    },
+  };
+}
+
+/** Backfill open benches from the pool — skipped while rotation is paused so organizers can assign manually. */
+export function maybeFillLadderBenchesFromWaitingPool(
+  state: QueueState,
+  courts: Court[],
+  players: Player[]
+): QueueState {
+  if (isRotationPaused(state)) return state;
+  return fillLadderBenchesFromWaitingPool(state, courts, players);
 }
 
 export function getLadderPlayerIds(state: QueueState): Set<string> {
@@ -137,7 +225,7 @@ export function buildInitialLadderSeeding(
 
   return {
     benchByCourtId,
-    waitingPool: sorted.slice(index),
+    waitingPool: sortWaitingPoolByFairness(sorted.slice(index), players),
   };
 }
 
@@ -188,6 +276,54 @@ export function routePlayersAfterLadderMatch(
   ladder = appendToBench(ladder, loserCourtId, loserIds);
 
   return { ...state, ladderWaterfall: ladder };
+}
+
+export type LadderMovementDirection = 'up' | 'stay' | 'down';
+
+export interface LadderMovementPreview {
+  winnerPlayerIds: string[];
+  loserPlayerIds: string[];
+  winnerTargetCourtLabel: string;
+  loserTargetCourtLabel: string;
+  winnerDirection: LadderMovementDirection;
+  loserDirection: LadderMovementDirection;
+}
+
+function movementDirection(fromRank: number, toRank: number): LadderMovementDirection {
+  if (toRank < fromRank) return 'up';
+  if (toRank > fromRank) return 'down';
+  return 'stay';
+}
+
+/** Preview where winners and losers land after recording a result (UI only). */
+export function previewLadderMovement(
+  match: Pick<Match, 'playerIds' | 'ladderMeta'>,
+  winningTeam: 'A' | 'B',
+  courts: Court[]
+): LadderMovementPreview | null {
+  if (!match.ladderMeta || courts.length === 0) return null;
+
+  const winnerIds = winnerIdsForTeam(match.playerIds, winningTeam);
+  const winnerSet = new Set(winnerIds);
+  const loserIds = match.playerIds.filter((id) => !winnerSet.has(id));
+
+  const rank = match.ladderMeta.courtRank;
+  const lastRank = courts.length - 1;
+  const winnerTargetRank = Math.max(rank - 1, 0);
+  const loserTargetRank = Math.min(rank + 1, lastRank);
+
+  const winnerCourt = courts[winnerTargetRank];
+  const loserCourt = courts[loserTargetRank];
+  if (!winnerCourt || !loserCourt) return null;
+
+  return {
+    winnerPlayerIds: winnerIds,
+    loserPlayerIds: loserIds,
+    winnerTargetCourtLabel: winnerCourt.label,
+    loserTargetCourtLabel: loserCourt.label,
+    winnerDirection: movementDirection(rank, winnerTargetRank),
+    loserDirection: movementDirection(rank, loserTargetRank),
+  };
 }
 
 export interface StartLadderMatchResult {
@@ -341,7 +477,13 @@ export function seedPlayerToLadder(
   }
 
   if (courts.length === 0) {
-    ladder = { ...ladder, waitingPool: dedupePreserveOrder([...ladder.waitingPool, playerId]) };
+    ladder = {
+      ...ladder,
+      waitingPool: sortWaitingPoolByFairness(
+        dedupePreserveOrder([...ladder.waitingPool, playerId]),
+        players
+      ),
+    };
     return { ...state, ladderWaterfall: ladder };
   }
 
@@ -354,12 +496,22 @@ export function seedPlayerToLadder(
 
   const target = findBestCourtForPlayer(ladder, courts, player);
   if (target === 'pool') {
-    ladder = { ...ladder, waitingPool: dedupePreserveOrder([...ladder.waitingPool, playerId]) };
+    ladder = {
+      ...ladder,
+      waitingPool: sortWaitingPoolByFairness(
+        dedupePreserveOrder([...ladder.waitingPool, playerId]),
+        players
+      ),
+    };
   } else {
     ladder = appendToBench(ladder, target, [playerId]);
   }
 
-  return { ...state, ladderWaterfall: ladder };
+  return maybeFillLadderBenchesFromWaitingPool(
+    { ...state, ladderWaterfall: ladder },
+    courts,
+    players
+  );
 }
 
 export function removePlayerFromLadder(state: QueueState, playerId: string): QueueState {
@@ -367,6 +519,53 @@ export function removePlayerFromLadder(state: QueueState, playerId: string): Que
   return {
     ...state,
     ladderWaterfall: removeFromLadder(state.ladderWaterfall, playerId),
+  };
+}
+
+/** Move a waiting-pool player onto an open bench slot (manual organizer override). */
+export function assignPlayerFromPoolToBench(
+  state: QueueState,
+  playerId: string,
+  courtId: string,
+  courts: Court[]
+): QueueState | null {
+  const ladder = state.ladderWaterfall;
+  if (!ladder) return null;
+  if (!ladder.waitingPool.includes(playerId)) return null;
+  if (state.activeMatches.some((match) => match.courtId === courtId)) return null;
+  if (getCourtRank(courts, courtId) < 0) return null;
+  if (countBenchPlayers(ladder, courtId) >= LADDER_PLAYERS_PER_COURT) return null;
+
+  const cleared = removeFromLadder(ladder, playerId);
+  return {
+    ...state,
+    ladderWaterfall: appendToBench(cleared, courtId, [playerId]),
+  };
+}
+
+/** Return a benched player to the waiting pool (manual reshuffle while rotation is paused). */
+export function returnBenchPlayerToPool(
+  state: QueueState,
+  playerId: string,
+  courtId: string,
+  players: Player[]
+): QueueState | null {
+  const ladder = state.ladderWaterfall;
+  if (!ladder) return null;
+  if (state.activeMatches.some((match) => match.courtId === courtId)) return null;
+  const bench = ladder.benchByCourtId[courtId] ?? [];
+  if (!bench.includes(playerId)) return null;
+
+  const cleared = removeFromLadder(ladder, playerId);
+  return {
+    ...state,
+    ladderWaterfall: {
+      ...cleared,
+      waitingPool: sortWaitingPoolByFairness(
+        dedupePreserveOrder([...cleared.waitingPool, playerId]),
+        players
+      ),
+    },
   };
 }
 
@@ -394,9 +593,18 @@ export function reconcileLadderWithCheckedInPlayers(
   courts: Court[]
 ): QueueState {
   const busy = new Set(state.activeMatches.flatMap((match) => match.playerIds));
+  const checkedInIds = players
+    .filter(isPlayerMatchable)
+    .map((player) => player.id)
+    .filter((id) => !busy.has(id));
+
+  if (courts.length === 0 || checkedInIds.length === 0) {
+    return state;
+  }
+
   let ladder = ensureLadderWaterfallState(state.ladderWaterfall);
 
-  if (courts.length > 0 && Object.keys(ladder.benchByCourtId).length === 0) {
+  if (Object.keys(ladder.benchByCourtId).length === 0) {
     ladder = { ...ladder, benchByCourtId: emptyBenchesForCourts(courts) };
   }
 
@@ -406,16 +614,22 @@ export function reconcileLadderWithCheckedInPlayers(
   ]).filter((id) => !busy.has(id));
 
   const inLadder = new Set(onLadder);
-  const missing = players
-    .filter(isPlayerMatchable)
-    .map((player) => player.id)
-    .filter((id) => !inLadder.has(id) && !busy.has(id));
+  const missing = checkedInIds.filter((id) => !inLadder.has(id));
+
+  // Fresh session / cleared ladder — full DUPR seed, not roster-order placement.
+  if (onLadder.length === 0 && missing.length === checkedInIds.length) {
+    return maybeFillLadderBenchesFromWaitingPool(
+      seedCheckedInPlayersToLadder(state, checkedInIds, courts, players),
+      courts,
+      players
+    );
+  }
 
   let next = state;
   for (const id of missing) {
     next = seedPlayerToLadder(next, id, courts, players);
   }
-  return next;
+  return maybeFillLadderBenchesFromWaitingPool(next, courts, players);
 }
 
 export function getLadderStartBlockReason(

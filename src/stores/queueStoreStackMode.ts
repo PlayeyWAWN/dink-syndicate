@@ -111,6 +111,26 @@ export function removePlayerForStackMode(
   return removePlayerFromWinLoseStacks(queueState, playerId);
 }
 
+/** Fresh stack seed for a new session (cleared stats, manual mode by default). */
+export function buildStackQueueStateForNewSession(players: Player[]): QueueState {
+  ensureCourtsForStackMode();
+  const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
+  return seedCheckedInPlayersToWinnersStack(
+    {
+      queue: [],
+      activeMatches: [],
+      completedMatches: [],
+      rotationPaused: true,
+      winLoseStack: resetWinLoseStackState({
+        queue: [],
+        activeMatches: [],
+        completedMatches: [],
+      }).winLoseStack,
+    },
+    checkedInIds
+  );
+}
+
 export function buildQueueStateForGameModeChange(
   current: QueueState,
   newMode: GameMode,

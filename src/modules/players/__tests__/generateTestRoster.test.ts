@@ -30,6 +30,21 @@ describe('generateTestRoster', () => {
     expect(new Set(ratings).size).toBeGreaterThan(10);
   });
 
+  it('supports smaller roster counts from the settings dropdown', () => {
+    const roster = generateTestRoster({ count: 8 });
+    expect(roster).toHaveLength(8);
+    expect(roster.map((player) => player.name)).toEqual([
+      'Marcus Chen',
+      'Sarah Mitchell',
+      'James Rivera',
+      'Emily Nguyen',
+      'David Okonkwo',
+      'Jessica Brooks',
+      'Michael Torres',
+      'Ashley Patel',
+    ]);
+  });
+
   it('skips names that already exist when merging', () => {
     const existing = [createPlayer({ id: 'a', name: 'Marcus Chen' })];
     const generated = generateTestRoster({ count: 3 });

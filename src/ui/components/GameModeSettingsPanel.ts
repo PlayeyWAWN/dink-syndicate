@@ -80,7 +80,7 @@ export function renderGameModeSettingsSection(): HTMLElement {
   return renderSettingsCollapsibleSection(
     [
       el('p', { className: 'screen-lead' }, [
-        'Choose how players rotate for the session. Stack and Ladder modes use automatic court rotation with partner shuffle.',
+        'Choose how players rotate for the session. Stack and Ladder modes start in manual mode — turn on Auto-rotation on the Queue tab when you want automatic bench fill, movement, and game starts.',
       ]),
       gameModeGroup,
     ],

@@ -25,6 +25,7 @@ import { Player, isPlayerMatchable } from '@/types/player';
 import { GameMode } from '@/types/game-mode';
 import {
   buildQueueStateForGameModeChange,
+  buildStackQueueStateForNewSession,
   ensureCourtsForStackMode,
   handleStackModeCancelMatch,
   handleStackModeCompleteMatch,
@@ -37,6 +38,9 @@ import {
   tryStartWinLoseStackMatchFromStore,
 } from '@/stores/queueStoreStackMode';
 import {
+  assignLadderPoolPlayerToBenchFromStore,
+  returnLadderBenchPlayerToPoolFromStore,
+  buildLadderQueueStateForNewSession,
   ensureCourtsForLadderMode,
   getLadderUnavailablePlayerIds,
   handleLadderModeCancelMatch,
@@ -81,10 +85,13 @@ interface QueueStoreState {
     update: CompletedMatchUpdate
   ) => { ok: true } | { ok: false; message: string };
   clearSessionQueue: () => void;
-  tryStartWinLoseStackMatch: (preferredCourtId?: string) => boolean;
+  prepareQueueForNewSession: () => void;
+  tryStartWinLoseStackMatch: (preferredCourtId?: string, options?: { manual?: boolean }) => boolean;
   onPlayerCheckedInForStackMode: (playerId: string) => void;
   onPlayerRemovedFromStackMode: (playerId: string) => void;
-  tryStartLadderMatch: (preferredCourtId?: string) => boolean;
+  tryStartLadderMatch: (preferredCourtId?: string, options?: { manual?: boolean }) => boolean;
+  assignLadderPlayerToBench: (playerId: string, courtId: string) => boolean;
+  returnLadderBenchPlayerToPool: (playerId: string, courtId: string) => boolean;
   onPlayerCheckedInForLadderMode: (playerId: string) => void;
   onPlayerRemovedFromLadderMode: (playerId: string) => void;
   resetForGameModeChange: (newMode: GameMode) => void;
@@ -463,7 +470,8 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
           nextState,
           match,
           winningTeam,
-          courts
+          courts,
+          updatedPlayers
         );
         set({ queueState: routedState });
         usePlayerStore.getState().replaceAll(updatedPlayers);
@@ -526,6 +534,39 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       syncPlayerAvailability({ available: availableIds });
     },
 
+    prepareQueueForNewSession: () => {
+      useQueueUiStore.getState().clearLadderStartNotices();
+      const players = usePlayerStore.getState().players;
+
+      if (isLadderModeActive()) {
+        const nextState = buildLadderQueueStateForNewSession(players);
+        set({ queueState: nextState });
+        persist(nextState);
+        syncLadderPlayerAvailability({
+          unavailable: getLadderUnavailablePlayerIds(nextState),
+        });
+        return;
+      }
+
+      if (isStackModeActive()) {
+        const nextState = buildStackQueueStateForNewSession(players);
+        set({ queueState: nextState });
+        persist(nextState);
+        const stackIds = [
+          ...(nextState.winLoseStack?.winnerStack ?? []),
+          ...(nextState.winLoseStack?.loserStack ?? []),
+        ];
+        syncStackPlayerAvailability({ unavailable: stackIds });
+        return;
+      }
+
+      const empty: QueueState = { ...emptyQueueState(), rotationPaused: false };
+      set({ queueState: empty });
+      persist(empty);
+      const availableIds = queueService.getAvailablePlayers(players, empty).map((p) => p.id);
+      syncPlayerAvailability({ available: availableIds });
+    },
+
     stopRotation: () => {
       if (get().queueState.rotationPaused) return;
       const nextState: QueueState = { ...get().queueState, rotationPaused: true };
@@ -548,8 +589,9 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       }
     },
 
-    tryStartWinLoseStackMatch: (preferredCourtId) => {
-      if (isRotationPaused(get().queueState)) return false;
+    tryStartWinLoseStackMatch: (preferredCourtId, options) => {
+      const manual = options?.manual === true;
+      if (!manual && isRotationPaused(get().queueState)) return false;
       const { state, match } = tryStartWinLoseStackMatchFromStore(
         get().queueState,
         preferredCourtId
@@ -581,24 +623,14 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       persist(nextState);
     },
 
-    tryStartLadderMatch: (preferredCourtId) => {
-      if (isRotationPaused(get().queueState)) return false;
+    tryStartLadderMatch: (preferredCourtId, options) => {
+      const manual = options?.manual === true;
+      if (!manual && isRotationPaused(get().queueState)) return false;
       const { state, matches } = tryStartLadderMatchFromStore(
         get().queueState,
         preferredCourtId
       );
       if (matches.length === 0) return false;
-
-      const courts = useCourtStore.getState().courts;
-      const players = usePlayerStore.getState().players;
-      useQueueUiStore.getState().pushLadderStartNotices(
-        matches.map((match) => ({
-          courtLabel: courts.find((court) => court.id === match.courtId)?.label ?? 'Court',
-          playerNames: match.playerIds.map(
-            (playerId) => players.find((player) => player.id === playerId)?.name ?? 'Unknown'
-          ),
-        }))
-      );
 
       set({ queueState: state });
       persist(state);
@@ -607,6 +639,38 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
         ...getLadderUnavailablePlayerIds(state),
       ];
       syncLadderPlayerAvailability({ unavailable });
+      return true;
+    },
+
+    assignLadderPlayerToBench: (playerId, courtId) => {
+      if (!isLadderModeActive()) return false;
+      const nextState = assignLadderPoolPlayerToBenchFromStore(
+        get().queueState,
+        playerId,
+        courtId
+      );
+      if (!nextState) return false;
+
+      set({ queueState: nextState });
+      persist(nextState);
+      syncLadderPlayerAvailability({ unavailable: getLadderUnavailablePlayerIds(nextState) });
+      return true;
+    },
+
+    returnLadderBenchPlayerToPool: (playerId, courtId) => {
+      if (!isLadderModeActive()) return false;
+      const players = usePlayerStore.getState().players;
+      const nextState = returnLadderBenchPlayerToPoolFromStore(
+        get().queueState,
+        playerId,
+        courtId,
+        players
+      );
+      if (!nextState) return false;
+
+      set({ queueState: nextState });
+      persist(nextState);
+      syncLadderPlayerAvailability({ unavailable: getLadderUnavailablePlayerIds(nextState) });
       return true;
     },
 
@@ -640,7 +704,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       const nextState = buildQueueStateForGameModeChange(current, newMode, players);
       const withRotationFlag: QueueState =
         newMode === 'win_lose_stack' || newMode === 'ladder_waterfall'
-          ? { ...nextState, rotationPaused: false }
+          ? { ...nextState, rotationPaused: true }
           : { ...nextState, rotationPaused: undefined };
 
       set({ queueState: withRotationFlag });
@@ -653,7 +717,6 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       if (newMode === 'win_lose_stack') {
         const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
         syncStackPlayerAvailability({ unavailable: checkedInIds });
-        get().tryStartWinLoseStackMatch();
         return;
       }
 
@@ -661,7 +724,6 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
         syncLadderPlayerAvailability({
           unavailable: getLadderUnavailablePlayerIds(withRotationFlag),
         });
-        get().tryStartLadderMatch();
         return;
       }
 

@@ -200,3 +200,13 @@
     font-size: 20px;
   }
 }
+
+/* —— Settings → Test roster count —— */
+.test-roster-count {
+  align-items: stretch;
+}
+
+.test-roster-count__select {
+  flex: 0 0 auto;
+  min-width: 8.5rem;
+}

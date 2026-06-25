@@ -1,8 +1,16 @@
 import {
+  assignPlayerFromPoolToBench,
   buildInitialLadderSeeding,
+  fillLadderBenchesFromWaitingPool,
+  maybeFillLadderBenchesFromWaitingPool,
+  getLadderUpNextPlayerIds,
+  previewLadderMovement,
+  reconcileLadderWithCheckedInPlayers,
   removePlayerFromLadder,
+  returnBenchPlayerToPool,
   returnLadderMatchToBench,
   routePlayersAfterLadderMatch,
+  sortWaitingPoolByFairness,
   startLadderMatchOnCourt,
   tryStartReadyLadderMatches,
 } from '@/modules/game-mode/ladderWaterfallMode';
@@ -54,6 +62,34 @@ describe('ladderWaterfallMode', () => {
     expect(seeded.benchByCourtId[courts[0].id]).toHaveLength(4);
     expect(seeded.benchByCourtId[courts[1].id]).toHaveLength(4);
     expect(seeded.waitingPool).toEqual(['p9', 'p10']);
+  });
+
+  it('reconcile full DUPR seeds when the ladder was cleared for a new session', () => {
+    const players = makePlayers(12);
+    const reversedRosterOrder = [...players].reverse();
+    const cleared: QueueState = {
+      queue: [],
+      activeMatches: [],
+      completedMatches: [],
+      rotationPaused: true,
+    };
+
+    const reconciled = reconcileLadderWithCheckedInPlayers(
+      cleared,
+      reversedRosterOrder,
+      courts
+    );
+
+    expect(reconciled.ladderWaterfall?.benchByCourtId[courts[0].id]).toEqual([
+      'p1',
+      'p2',
+      'p3',
+      'p4',
+    ]);
+    expect(reconciled.ladderWaterfall?.benchByCourtId[courts[2].id]).toEqual(
+      expect.arrayContaining(['p9', 'p10', 'p11', 'p12'])
+    );
+    expect(reconciled.ladderWaterfall?.benchByCourtId[courts[2].id]).toHaveLength(4);
   });
 
   it('routes winners up and losers down after a match on Court 2', () => {
@@ -131,6 +167,72 @@ describe('ladderWaterfallMode', () => {
     );
     expect(bottomRouted.ladderWaterfall?.benchByCourtId[courts[1].id]).toEqual(['w3', 'w4']);
     expect(bottomRouted.ladderWaterfall?.benchByCourtId[courts[2].id]).toEqual(['l3', 'l4']);
+  });
+
+  describe('previewLadderMovement', () => {
+    const matchOnCourt2 = {
+      playerIds: ['w1', 'w2', 'l1', 'l2'],
+      ladderMeta: {
+        courtId: courts[1].id,
+        courtRank: 1,
+        benchPullOrder: ['w1', 'w2', 'l1', 'l2'],
+      },
+    };
+
+    it('previews winners moving up and losers moving down from middle court', () => {
+      const preview = previewLadderMovement(matchOnCourt2, 'A', courts);
+      expect(preview).not.toBeNull();
+      expect(preview!.winnerPlayerIds).toEqual(['w1', 'w2']);
+      expect(preview!.loserPlayerIds).toEqual(['l1', 'l2']);
+      expect(preview!.winnerTargetCourtLabel).toBe(courts[0].label);
+      expect(preview!.loserTargetCourtLabel).toBe(courts[2].label);
+      expect(preview!.winnerDirection).toBe('up');
+      expect(preview!.loserDirection).toBe('down');
+    });
+
+    it('previews top-court winners staying and losers moving down', () => {
+      const preview = previewLadderMovement(
+        {
+          playerIds: ['w1', 'w2', 'l1', 'l2'],
+          ladderMeta: {
+            courtId: courts[0].id,
+            courtRank: 0,
+            benchPullOrder: ['w1', 'w2', 'l1', 'l2'],
+          },
+        },
+        'A',
+        courts
+      );
+      expect(preview!.winnerDirection).toBe('stay');
+      expect(preview!.loserDirection).toBe('down');
+      expect(preview!.winnerTargetCourtLabel).toBe(courts[0].label);
+      expect(preview!.loserTargetCourtLabel).toBe(courts[1].label);
+    });
+
+    it('previews bottom-court winners moving up and losers staying', () => {
+      const preview = previewLadderMovement(
+        {
+          playerIds: ['w1', 'w2', 'l1', 'l2'],
+          ladderMeta: {
+            courtId: courts[2].id,
+            courtRank: 2,
+            benchPullOrder: ['w1', 'w2', 'l1', 'l2'],
+          },
+        },
+        'A',
+        courts
+      );
+      expect(preview!.winnerDirection).toBe('up');
+      expect(preview!.loserDirection).toBe('stay');
+      expect(preview!.winnerTargetCourtLabel).toBe(courts[1].label);
+      expect(preview!.loserTargetCourtLabel).toBe(courts[2].label);
+    });
+
+    it('returns null when ladder meta is missing', () => {
+      expect(
+        previewLadderMovement({ playerIds: ['a', 'b', 'c', 'd'] }, 'A', courts)
+      ).toBeNull();
+    });
   });
 
   it('starts a match when a bench has four players', () => {
@@ -213,5 +315,119 @@ describe('ladderWaterfallMode', () => {
 
     const nextPool = removePlayerFromLadder(next, 'p4');
     expect(nextPool.ladderWaterfall?.waitingPool).toEqual([]);
+  });
+
+  it('assigns a waiting-pool player to an open bench slot manually', () => {
+    const players = makePlayers(5);
+    const state = baseState({
+      ladderWaterfall: {
+        benchByCourtId: {
+          [courts[0].id]: ['p1', 'p2', 'p3'],
+          [courts[1].id]: [],
+          [courts[2].id]: [],
+        },
+        waitingPool: ['p4', 'p5'],
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    const assigned = assignPlayerFromPoolToBench(state, 'p5', courts[0].id, courts);
+    expect(assigned?.ladderWaterfall?.benchByCourtId[courts[0].id]).toEqual([
+      'p1',
+      'p2',
+      'p3',
+      'p5',
+    ]);
+    expect(assigned?.ladderWaterfall?.waitingPool).toEqual(['p4']);
+  });
+
+  it('returns a benched player to the waiting pool manually', () => {
+    const players = makePlayers(5);
+    const state = baseState({
+      ladderWaterfall: {
+        benchByCourtId: {
+          [courts[0].id]: ['p1', 'p2', 'p3', 'p4'],
+          [courts[1].id]: [],
+          [courts[2].id]: [],
+        },
+        waitingPool: ['p5'],
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    const returned = returnBenchPlayerToPool(state, 'p4', courts[0].id, players);
+    expect(returned?.ladderWaterfall?.benchByCourtId[courts[0].id]).toEqual(['p1', 'p2', 'p3']);
+    expect(returned?.ladderWaterfall?.waitingPool).toEqual(['p4', 'p5']);
+  });
+
+  it('orders waiting pool by fewest games played', () => {
+    const players = [
+      { ...createPlayer({ id: 'a', name: 'Chris' }), gamesPlayed: 0 },
+      { ...createPlayer({ id: 'b', name: 'Emily' }), gamesPlayed: 9 },
+      { ...createPlayer({ id: 'c', name: 'Alex' }), gamesPlayed: 2 },
+    ];
+    expect(sortWaitingPoolByFairness(['b', 'a', 'c'], players)).toEqual(['a', 'c', 'b']);
+  });
+
+  it('backfills open bench slots from the waiting pool', () => {
+    const players = [
+      { ...createPlayer({ id: 'p1', name: 'Veteran' }), gamesPlayed: 9 },
+      { ...createPlayer({ id: 'p2', name: 'Chris' }), gamesPlayed: 0 },
+    ];
+    const state = baseState({
+      ladderWaterfall: {
+        benchByCourtId: {
+          [courts[0].id]: ['x1', 'x2', 'x3', 'x4'],
+          [courts[1].id]: ['x5', 'x6', 'x7', 'x8'],
+          [courts[2].id]: ['x9', 'x10', 'x11'],
+        },
+        waitingPool: ['p1', 'p2'],
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    const filled = fillLadderBenchesFromWaitingPool(state, courts, players);
+    expect(filled.ladderWaterfall?.waitingPool).toEqual(['p1']);
+    expect(filled.ladderWaterfall?.benchByCourtId[courts[2].id]).toEqual(['x9', 'x10', 'x11', 'p2']);
+  });
+
+  it('skips waiting-pool backfill while rotation is paused', () => {
+    const players = [
+      { ...createPlayer({ id: 'p1', name: 'Veteran' }), gamesPlayed: 9 },
+      { ...createPlayer({ id: 'p2', name: 'Chris' }), gamesPlayed: 0 },
+    ];
+    const state = baseState({
+      rotationPaused: true,
+      ladderWaterfall: {
+        benchByCourtId: {
+          [courts[0].id]: ['x1', 'x2', 'x3', 'x4'],
+          [courts[1].id]: ['x5', 'x6', 'x7', 'x8'],
+          [courts[2].id]: ['x9', 'x10', 'x11'],
+        },
+        waitingPool: ['p1', 'p2'],
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    const unchanged = maybeFillLadderBenchesFromWaitingPool(state, courts, players);
+    expect(unchanged).toBe(state);
+    expect(unchanged.ladderWaterfall?.waitingPool).toEqual(['p1', 'p2']);
+    expect(unchanged.ladderWaterfall?.benchByCourtId[courts[2].id]).toEqual(['x9', 'x10', 'x11']);
+  });
+
+  it('returns up-next players from the head of the fairness-ordered pool', () => {
+    const players = [
+      { ...createPlayer({ id: 'p1', name: 'Chris' }), gamesPlayed: 0 },
+      { ...createPlayer({ id: 'p2', name: 'Emily' }), gamesPlayed: 9 },
+    ];
+    const state = baseState({
+      ladderWaterfall: {
+        benchByCourtId: { [courts[0].id]: [], [courts[1].id]: [], [courts[2].id]: [] },
+        waitingPool: ['p2', 'p1'],
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    expect(getLadderUpNextPlayerIds(state, players, 1)).toEqual(['p1']);
   });
 });

@@ -6,9 +6,13 @@ import { courtService } from '@/modules/courts/CourtService';
 import { DEFAULT_ORGANIZER_NAME } from '@/config/constants';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import {
+  assignPlayerFromPoolToBench,
+  fillLadderBenchesFromWaitingPool,
+  maybeFillLadderBenchesFromWaitingPool,
   reconcileLadderWithCheckedInPlayers,
   removePlayerFromLadder,
   resetLadderWaterfallState,
+  returnBenchPlayerToPool,
   returnLadderMatchToBench,
   routePlayersAfterLadderMatch,
   seedCheckedInPlayersToLadder,
@@ -76,9 +80,11 @@ export function handleLadderModeCompleteMatch(
   queueState: QueueState,
   match: Pick<Match, 'playerIds' | 'ladderMeta'>,
   winningTeam: 'A' | 'B',
-  courts: ReturnType<typeof useCourtStore.getState>['courts']
+  courts: ReturnType<typeof useCourtStore.getState>['courts'],
+  players: Player[]
 ): QueueState {
-  return routePlayersAfterLadderMatch(queueState, match, winningTeam, courts);
+  const routed = routePlayersAfterLadderMatch(queueState, match, winningTeam, courts);
+  return maybeFillLadderBenchesFromWaitingPool(routed, courts, players);
 }
 
 export function tryStartLadderMatchFromStore(
@@ -90,11 +96,14 @@ export function tryStartLadderMatchFromStore(
   }
 
   const courts = useCourtStore.getState().courts;
+  const players = usePlayerStore.getState().players;
   const { state, matches } = tryStartReadyLadderMatches(
     queueState,
     courts,
     preferredCourtId
   );
+
+  const filled = maybeFillLadderBenchesFromWaitingPool(state, courts, players);
 
   for (const match of matches) {
     if (match.courtId) {
@@ -102,7 +111,7 @@ export function tryStartLadderMatchFromStore(
     }
   }
 
-  return { state, matches };
+  return { state: filled, matches };
 }
 
 export function seedPlayerForLadderMode(
@@ -119,6 +128,26 @@ export function removePlayerForLadderMode(
   playerId: string
 ): QueueState {
   return removePlayerFromLadder(queueState, playerId);
+}
+
+export function assignLadderPoolPlayerToBenchFromStore(
+  queueState: QueueState,
+  playerId: string,
+  courtId: string
+): QueueState | null {
+  if (!isLadderModeActive()) return null;
+  const courts = useCourtStore.getState().courts;
+  return assignPlayerFromPoolToBench(queueState, playerId, courtId, courts);
+}
+
+export function returnLadderBenchPlayerToPoolFromStore(
+  queueState: QueueState,
+  playerId: string,
+  courtId: string,
+  players: Player[]
+): QueueState | null {
+  if (!isLadderModeActive()) return null;
+  return returnBenchPlayerToPool(queueState, playerId, courtId, players);
 }
 
 export function buildLadderQueueStateForGameModeChange(
@@ -140,6 +169,21 @@ export function buildLadderQueueStateForGameModeChange(
     courts,
     players
   );
+}
+
+/** Fresh DUPR ladder seed for a new session (cleared stats, manual mode by default). */
+export function buildLadderQueueStateForNewSession(players: Player[]): QueueState {
+  ensureCourtsForLadderMode();
+  const courts = useCourtStore.getState().courts;
+  const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
+  const base: QueueState = {
+    queue: [],
+    activeMatches: [],
+    completedMatches: [],
+    rotationPaused: true,
+  };
+  const seeded = seedCheckedInPlayersToLadder(base, checkedInIds, courts, players);
+  return fillLadderBenchesFromWaitingPool(seeded, courts, players);
 }
 
 export function syncLadderPlayerAvailability(options: {

@@ -37,12 +37,17 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does Ladder/Waterfall work?',
     answer:
-      'Use at least two courts and check in players (seeded by DUPR onto Court 1 first). Record winners after each doubles game — winners move up one court, losers move down, and partners split on the next lineup. Extra players wait in the pool until a bench has four.',
+      'Use at least two courts and check in players (seeded by DUPR onto Court 1 first). Record winners after each doubles game — winners move up one court, losers move down, and partners split on the next lineup. Extra players wait in the pool until a bench slot opens; the pool is ordered by fewest games played, with an Up next badge on the next four due in.',
+  },
+  {
+    question: 'What is Auto-rotation?',
+    answer:
+      'In Win/Lose Stack and Ladder/Waterfall modes, Auto-rotation is off by default. Tap Auto-rotation on the Queue tab when you want the app to handle everything: routing players after each game, filling benches from the waiting pool (fewest games played first), and starting courts when four players are ready. Turn it off again to assign lineups manually.',
   },
   {
     question: 'How do I end a Win/Lose Stack or Ladder session?',
     answer:
-      'On the Queue tab, tap Stop rotation so new games are not dealt automatically. Finish or cancel any active matches, then go to Settings → End session & archive. Only completed games count toward session stats and rankings — active matches cleared at end do not affect points.',
+      'Turn off Auto-rotation on the Queue tab if it is on, so new games are not dealt automatically. Finish or cancel any active matches, then go to Settings → End session & archive. Only completed games count toward session stats and rankings — active matches cleared at end do not affect points.',
   },
   {
     question: 'Can I build matches manually?',

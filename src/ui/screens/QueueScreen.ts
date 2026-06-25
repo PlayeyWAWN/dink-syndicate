@@ -1,9 +1,5 @@
 import { el } from '@/lib/dom-utils';
 import { clearLiveTimers, mountLiveTimers } from '@/lib/match-timer';
-import {
-  clearLadderNoticeRefresh,
-  mountLadderNoticeRefresh,
-} from '@/lib/ladder-notice-timer';
 import { getAvailableWaitThresholds } from '@/lib/session-settings-utils';
 import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -28,7 +24,6 @@ import {
 } from '@/modules/queue/ManualMatchService';
 export function renderQueueScreen(container: HTMLElement): void {
   clearLiveTimers(container);
-  clearLadderNoticeRefresh(container);
 
   const {
     queueState,
@@ -56,45 +51,51 @@ export function renderQueueScreen(container: HTMLElement): void {
   const waitThresholds = getAvailableWaitThresholds(appSettings);
   const header = el('div', { className: 'section-header' });
   header.append(el('div', { className: 'section-title' }, ['Queue']));
-  container.append(
-    header,
-    el('p', { className: 'screen-lead' }, [
-      stackMode
-        ? 'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.'
-        : ladderMode
-          ? 'Ladder/Waterfall mode — Court 1 is the top rung; record winners to move players up or down the ladder.'
-          : 'Create matches automatically, tap available players to build manually, or tap queued names to swap or replace.',
-    ])
-  );
+  container.append(header);
 
-  container.append(
-    renderActiveMatchesPanel({
-      matches: queueState.activeMatches,
-      courts,
-      players,
-      available,
-      onComplete: (matchId, team) => {
-        completeMatch(matchId, team);
-        appRouter.navigate('queue');
-      },
-      onCancel: (matchId) => {
-        cancelActiveMatch(matchId);
-        appRouter.navigate('queue');
-      },
-      onSwapPlayer: (matchId, playerIdA, playerIdB) => {
-        const ok = swapActiveMatchPlayers(matchId, playerIdA, playerIdB);
-        if (ok) appRouter.navigate('queue');
-        return ok;
-      },
-      onReplacePlayer: (matchId, oldPlayerId, newPlayerId) => {
-        const ok = replaceActiveMatchPlayer(matchId, oldPlayerId, newPlayerId);
-        if (ok) appRouter.navigate('queue');
-        return ok;
-      },
-    })
-  );
+  if (!stackMode && !ladderMode) {
+    container.append(
+      el('p', { className: 'screen-lead' }, [
+        'Create matches automatically, tap available players to build manually, or tap queued names to swap or replace.',
+      ])
+    );
+  }
+
+  if (!ladderMode) {
+    container.append(
+      renderActiveMatchesPanel({
+        matches: queueState.activeMatches,
+        courts,
+        players,
+        available,
+        onComplete: (matchId, team) => {
+          completeMatch(matchId, team);
+          appRouter.navigate('queue');
+        },
+        onCancel: (matchId) => {
+          cancelActiveMatch(matchId);
+          appRouter.navigate('queue');
+        },
+        onSwapPlayer: (matchId, playerIdA, playerIdB) => {
+          const ok = swapActiveMatchPlayers(matchId, playerIdA, playerIdB);
+          if (ok) appRouter.navigate('queue');
+          return ok;
+        },
+        onReplacePlayer: (matchId, oldPlayerId, newPlayerId) => {
+          const ok = replaceActiveMatchPlayer(matchId, oldPlayerId, newPlayerId);
+          if (ok) appRouter.navigate('queue');
+          return ok;
+        },
+      })
+    );
+  }
 
   if (stackMode) {
+    container.append(
+      el('p', { className: 'screen-lead' }, [
+        'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.',
+      ])
+    );
     useQueueStore.getState().reconcileWinLoseStackState();
     const liveQueueState = useQueueStore.getState().queueState;
     container.append(
@@ -114,8 +115,27 @@ export function renderQueueScreen(container: HTMLElement): void {
         queueState: liveQueueState,
         courts,
         players,
+        available,
         activeMatchCount: liveQueueState.activeMatches.length,
         onNavigate: () => appRouter.navigate('queue'),
+        onComplete: (matchId, team) => {
+          completeMatch(matchId, team);
+          appRouter.navigate('queue');
+        },
+        onCancel: (matchId) => {
+          cancelActiveMatch(matchId);
+          appRouter.navigate('queue');
+        },
+        onSwapPlayer: (matchId, playerIdA, playerIdB) => {
+          const ok = swapActiveMatchPlayers(matchId, playerIdA, playerIdB);
+          if (ok) appRouter.navigate('queue');
+          return ok;
+        },
+        onReplacePlayer: (matchId, oldPlayerId, newPlayerId) => {
+          const ok = replaceActiveMatchPlayer(matchId, oldPlayerId, newPlayerId);
+          if (ok) appRouter.navigate('queue');
+          return ok;
+        },
       })
     );
   } else {
@@ -238,8 +258,4 @@ export function renderQueueScreen(container: HTMLElement): void {
       appRouter.navigate('queue');
     },
   });
-
-  if (ladderMode) {
-    mountLadderNoticeRefresh(container, () => appRouter.navigate('queue'));
-  }
 }

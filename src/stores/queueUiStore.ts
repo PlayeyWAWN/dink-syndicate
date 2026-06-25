@@ -18,6 +18,7 @@ interface QueueUiState {
   availableSectionOpen: boolean;
   excludedSectionOpen: boolean;
   ladderStartNotices: LadderStartNotice[];
+  ladderSelectedPoolPlayerId: string | null;
   setCourtFormat: (format: CourtFormat) => void;
   setMatchMode: (mode: QueueMatchMode) => void;
   toggleSelectedPlayer: (playerId: string) => void;
@@ -32,6 +33,8 @@ interface QueueUiState {
   setLadderStartNotices: (notices: LadderStartNotice[]) => void;
   removeLadderStartNotice: (id: string) => void;
   clearLadderStartNotices: () => void;
+  setLadderSelectedPoolPlayer: (playerId: string | null) => void;
+  clearLadderSelection: () => void;
 }
 
 export const useQueueUiStore = create<QueueUiState>((set, get) => ({
@@ -43,6 +46,7 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   availableSectionOpen: true,
   excludedSectionOpen: true,
   ladderStartNotices: [],
+  ladderSelectedPoolPlayerId: null,
   setCourtFormat: (courtFormat) => set({ courtFormat, selectedPlayerIds: [] }),
   setMatchMode: (matchMode) => set({ matchMode, selectedPlayerIds: [] }),
   toggleSelectedPlayer: (playerId) => {
@@ -73,7 +77,9 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
     set((state) => ({
       ladderStartNotices: state.ladderStartNotices.filter((notice) => notice.id !== id),
     })),
-  clearLadderStartNotices: () => set({ ladderStartNotices: [] }),
+  clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
+  setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
+  clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
 }));
 
 export type { CourtFormat, QueueMatchMode };

@@ -5,6 +5,18 @@ import { Player } from '@/types/player';
 
 export interface MatchPlayerChipOptions {
   onClick?: () => void;
+  /** When 'dupr', show rating and skill instead of games played. */
+  metaFormat?: 'games' | 'dupr';
+}
+
+function formatChipMeta(player: Player, metaFormat: 'games' | 'dupr'): string {
+  const skill = formatSkillLevel(getSkillLevelFromDupr(player.dupr.duprDoublesRating));
+  if (metaFormat === 'dupr') {
+    const rating = player.dupr.duprDoublesRating;
+    const ratingLabel = rating != null ? rating.toFixed(1) : '—';
+    return `${ratingLabel} · ${skill}`;
+  }
+  return `${player.gamesPlayed}g · ${skill}`;
 }
 
 export function renderMatchPlayerChip(
@@ -15,7 +27,7 @@ export function renderMatchPlayerChip(
     return el('div', { className: 'match-player-chip match-player-chip--empty' }, ['—']);
   }
 
-  const skill = formatSkillLevel(getSkillLevelFromDupr(player.dupr.duprDoublesRating));
+  const metaFormat = options.metaFormat ?? 'games';
   const className = [
     'match-player-chip',
     `match-player-chip--${player.gender}`,
@@ -30,7 +42,7 @@ export function renderMatchPlayerChip(
   const content = [
     iconWrap,
     el('div', { className: 'match-player-chip__name' }, [player.name]),
-    el('div', { className: 'match-player-chip__meta' }, [`${player.gamesPlayed}g · ${skill}`]),
+    el('div', { className: 'match-player-chip__meta' }, [formatChipMeta(player, metaFormat)]),
   ];
 
   if (options.onClick) {
