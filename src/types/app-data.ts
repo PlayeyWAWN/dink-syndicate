@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_COURT_COUNT } from '@/config/constants';
 import { PlayerSchema, PlayerStats } from '@/types/player';
 import { CourtSchema } from '@/types/court';
 import { QueueStateSchema } from '@/types/queue';
@@ -9,7 +10,7 @@ import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
 export const APP_DATA_VERSION = 2;
 
 export const AppSettingsSchema = z.object({
-  courtCount: z.number().int().min(0).max(24).default(4),
+  courtCount: z.number().int().min(0).max(24).default(DEFAULT_COURT_COUNT),
   organizerName: z.string().min(1),
   /** Unix ms — today's session start for arrival penalty. */
   sessionStartTime: z.number().int().nonnegative().optional(),
@@ -107,7 +108,7 @@ export function mergeAppSettings(
   partial?: Partial<AppSettings>
 ): AppSettings {
   return {
-    courtCount: partial?.courtCount ?? current?.courtCount ?? 4,
+    courtCount: partial?.courtCount ?? current?.courtCount ?? DEFAULT_COURT_COUNT,
     organizerName: partial?.organizerName ?? current?.organizerName ?? sessionOrganizerName,
     sessionStartTime: partial?.sessionStartTime ?? current?.sessionStartTime,
     arrivalGraceMinutes:

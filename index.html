@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-title" content="Dink Syndicate">
 
   <title>Dink Syndicate</title>
-  <meta name="app-version" content="0.2.0">
+  <meta name="app-version" content="0.2.1">
 
   <script>
     (function () {
@@ -23,34 +23,7 @@
     })();
   </script>
 
-  <script>
-    (function () {
-      'use strict';
-      var meta = document.querySelector('meta[name="app-version"]');
-      var VERSION = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
-      var stored = localStorage.getItem('dinksyndicate_app_version');
-      var RECOVERY = 'dinksyndicate_html_recovery_v1';
-
-      if (!meta || !VERSION) {
-        if (!sessionStorage.getItem(RECOVERY)) {
-          sessionStorage.setItem(RECOVERY, '1');
-          var url = new URL(window.location.href);
-          url.searchParams.set('_sw_bypass', String(Date.now()));
-          window.location.replace(url.toString());
-        }
-        return;
-      }
-
-      if (stored == null || stored === '') {
-        localStorage.setItem('dinksyndicate_app_version', VERSION);
-        return;
-      }
-
-      if (stored !== VERSION) {
-        localStorage.setItem('dinksyndicate_app_version', VERSION);
-      }
-    })();
-  </script>
+  <script src="/version-check-head.js"></script>
 
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">

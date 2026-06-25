@@ -1,10 +1,10 @@
 import {
   APP_NAME,
   APP_TAGLINE,
-  APP_VERSION,
   DEVELOPER_FACEBOOK_URL,
 } from '@/config/constants';
 import { el } from '@/lib/dom-utils';
+import { getRuntimeAppVersion } from '@/lib/version-check';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
 import { renderSettingsCollapsibleSection } from '@/ui/components/SettingsCollapsibleSection';
 
@@ -57,7 +57,7 @@ export function renderAppInformationPanel(): HTMLElement {
   const versionRow = el('p', { className: 'app-info__version' });
   versionRow.append(
     el('strong', {}, ['Version']),
-    document.createTextNode(` ${APP_VERSION}`)
+    document.createTextNode(` ${getRuntimeAppVersion()}`)
   );
 
   const easterEgg = el('p', { className: 'app-info__easter-egg' }, [

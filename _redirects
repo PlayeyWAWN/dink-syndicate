@@ -1,5 +1,6 @@
 # Cloudflare Pages — static assets first, then SPA fallback
 /sw.js /sw.js 200
+/version-check-head.js /version-check-head.js 200
 /manifest.json /manifest.json 200
 /favicon.svg /favicon.svg 200
 /images/* /images/:splat 200

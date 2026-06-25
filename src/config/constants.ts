@@ -2,7 +2,7 @@
 
 export const APP_NAME = 'Dink Syndicate';
 export const APP_TAGLINE = 'Ball Engagement Network';
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.2.1';
 /** Developer contact — Settings → App information. */
 export const DEVELOPER_FACEBOOK_URL =
   'https://www.facebook.com/profile.php?id=61591397784939';
@@ -19,7 +19,7 @@ export const STORAGE_KEYS = {
   ACTIVE_UID: `${STORAGE_PREFIX}_active_storage_uid`,
 } as const;
 
-export const DEFAULT_COURT_COUNT = 4;
+export const DEFAULT_COURT_COUNT = 1;
 export const DEFAULT_ORGANIZER_NAME = 'Queue Master';
 
 /** Default manual DUPR-style rating for new players (queue balancing only). */
