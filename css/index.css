@@ -9,6 +9,7 @@
 @import './features/players.css';
 @import './features/players-registration.css';
 @import './features/queue.css';
+@import './features/ladder-waterfall.css';
 @import './features/queue-actions.css';
 @import './features/queue-recent.css';
 @import './features/queue-dialog.css';

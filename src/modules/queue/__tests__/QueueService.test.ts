@@ -45,6 +45,27 @@ describe('QueueService', () => {
     expect(available[0].id).toBe('p4');
   });
 
+  it('excludes ladder bench and waiting pool players from available pool', () => {
+    const players = Array.from({ length: 6 }, (_, i) =>
+      createPlayer({ id: `p${i}`, name: `P${i}`, checkedIn: true })
+    );
+    const state = {
+      queue: [],
+      activeMatches: [],
+      completedMatches: [],
+      ladderWaterfall: {
+        benchByCourtId: {
+          'court-1': ['p0', 'p1', 'p2', 'p3'],
+          'court-2': ['p4'],
+        },
+        waitingPool: ['p5'],
+        lastPartnerByPlayer: {},
+      },
+    };
+    const available = service.getAvailablePlayers(players, state);
+    expect(available).toHaveLength(0);
+  });
+
   it('excludes excluded players from available pool', () => {
     const players = [
       createPlayer({ id: 'p0', name: 'A', checkedIn: true }),

@@ -3,15 +3,17 @@ import { pickleballIconHtml } from '@/ui/icons/pickleball-icon';
 import { useQueueStore } from '@/stores/queueStore';
 import { useCourtStore } from '@/stores/courtStore';
 import { Player } from '@/types/player';
-import { WinLoseStackState } from '@/types/win-lose-stack';
+import { QueueState } from '@/types/queue';
+import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
+import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 import {
-  canStartFromStack,
   countNextUpStackFromStack,
+  getStackStartBlockReason,
   WIN_LOSE_STACK_PLAYERS,
 } from '@/modules/game-mode/winLoseStackMode';
 
 export interface WinLoseStackPanelOptions {
-  stack: WinLoseStackState;
+  queueState: QueueState;
   players: Player[];
   openCourtCount: number;
   activeMatchCount: number;
@@ -56,7 +58,11 @@ function renderStackColumn(
 
 /** Win/Lose Stack rotation panel — two stacks, Next-Up indicator, and cold-start control. */
 export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTMLElement {
-  const { stack, players, openCourtCount, activeMatchCount, onNavigate } = options;
+  const { queueState, players, openCourtCount, activeMatchCount, onNavigate } = options;
+  const stack = ensureWinLoseStackState(queueState.winLoseStack);
+  const rotationPaused = queueState.rotationPaused === true;
+  const blockReason = getStackStartBlockReason(queueState, openCourtCount, activeMatchCount);
+  const canStart = !rotationPaused && blockReason == null;
 
   const section = el('section', { className: 'queue-section queue-section--stacks' });
   section.append(
@@ -67,10 +73,12 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       ]),
     ]),
     el('p', { className: 'screen-lead queue-section__lead' }, [
-      'After each game, winners join the Winners stack and losers join the Losers stack. ',
-      'The Next-Up stack feeds the next court; teammates are split onto opposite teams.',
+      'Two waiting piles: first 4 check-ins start in Winners, the rest in Losers (waiting — not game losers yet). ',
+      'After each game, actual winners and losers return to the back of their pile. Next-Up alternates between piles.',
     ])
   );
+
+  section.append(renderRotationControls({ onNavigate }));
 
   const statsRow = el('div', { className: 'stat-grid queue-section__stats queue-stat-grid' });
   statsRow.append(
@@ -100,36 +108,56 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   );
   section.append(stacksGrid);
 
+  if (blockReason) {
+    section.append(
+      el('p', {
+        className: 'screen-lead win-lose-stack__status win-lose-stack__status--blocked',
+        role: 'status',
+      }, [blockReason])
+    );
+  }
+
   const actions = el('div', { className: 'queue-section__actions' });
   const startBtn = el('button', {
     type: 'button',
     className: 'btn btn-success btn-create-match',
+    disabled: canStart ? undefined : 'true',
   }) as HTMLButtonElement;
   startBtn.innerHTML = `${pickleballIconHtml()}<span>Start next game</span>`;
 
-  const canStart = openCourtCount > 0 && canStartFromStack(stack);
-  if (!canStart) {
-    startBtn.disabled = true;
-    if (openCourtCount === 0) {
-      startBtn.title = 'All courts are occupied.';
-    } else if (countNextUpStackFromStack(stack) < WIN_LOSE_STACK_PLAYERS) {
-      startBtn.title = `Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack.`;
-    }
-  }
-
   startBtn.addEventListener('click', () => {
-    const courts = useCourtStore.getState().courts;
-    const openCourt = courts.find((court) => !court.activeMatchId);
-    if (!openCourt) {
-      alert('All courts are occupied. Finish a match first.');
+    if (useQueueStore.getState().queueState.rotationPaused) {
+      alert('Rotation is paused. Tap Resume rotation or end the session from Settings.');
+      onNavigate();
       return;
     }
+
+    const courts = useCourtStore.getState().courts;
+    const openCourt = courts.find((court) => !court.activeMatchId);
+    const liveState = useQueueStore.getState().queueState;
+    const liveBlock = getStackStartBlockReason(
+      liveState,
+      courts.filter((court) => !court.activeMatchId).length,
+      liveState.activeMatches.length
+    );
+
+    if (liveBlock) {
+      alert(liveBlock);
+      onNavigate();
+      return;
+    }
+
+    if (!openCourt) {
+      alert('All courts are occupied. Finish a match first.');
+      onNavigate();
+      return;
+    }
+
     const started = useQueueStore.getState().tryStartWinLoseStackMatch(openCourt.id);
     if (!started) {
       alert(
-        `Need at least ${WIN_LOSE_STACK_PLAYERS} players in the ${stack.nextUp === 'winners' ? 'Winners' : 'Losers'} stack (Next-Up).`
+        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack and an open court.`
       );
-      return;
     }
     onNavigate();
   });

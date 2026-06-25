@@ -1,5 +1,9 @@
 import { el } from '@/lib/dom-utils';
 import { clearLiveTimers, mountLiveTimers } from '@/lib/match-timer';
+import {
+  clearLadderNoticeRefresh,
+  mountLadderNoticeRefresh,
+} from '@/lib/ladder-notice-timer';
 import { getAvailableWaitThresholds } from '@/lib/session-settings-utils';
 import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -13,10 +17,10 @@ import { renderExcludedPlayersPanel } from '@/ui/components/ExcludedPlayersPanel
 import { renderRecentCompletedMatchesPanel } from '@/ui/components/RecentCompletedMatchesPanel';
 import { renderMatchQueueSection } from '@/ui/components/MatchQueueSection';
 import { renderWinLoseStackPanel } from '@/ui/components/WinLoseStackPanel';
+import { renderLadderWaterfallPanel } from '@/ui/components/LadderWaterfallPanel';
 import { openBalanceNoticeDialog } from '@/ui/components/BalanceNoticeDialog';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
-import { isWinLoseStackMode } from '@/types/game-mode';
-import { ensureWinLoseStackState } from '@/types/win-lose-stack';
+import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 import { openPlayerPauseDialog } from '@/ui/components/PlayerPauseDialog';
 import {
   assessMatchBalance,
@@ -24,6 +28,7 @@ import {
 } from '@/modules/queue/ManualMatchService';
 export function renderQueueScreen(container: HTMLElement): void {
   clearLiveTimers(container);
+  clearLadderNoticeRefresh(container);
 
   const {
     queueState,
@@ -47,6 +52,7 @@ export function renderQueueScreen(container: HTMLElement): void {
   const appSettings = useSessionStore.getState().loadSnapshot()?.settings;
   const gameMode = getGameMode(appSettings);
   const stackMode = isWinLoseStackMode(gameMode);
+  const ladderMode = isLadderWaterfallMode(gameMode);
   const waitThresholds = getAvailableWaitThresholds(appSettings);
   const header = el('div', { className: 'section-header' });
   header.append(el('div', { className: 'section-title' }, ['Queue']));
@@ -55,7 +61,9 @@ export function renderQueueScreen(container: HTMLElement): void {
     el('p', { className: 'screen-lead' }, [
       stackMode
         ? 'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.'
-        : 'Create matches automatically, tap available players to build manually, or tap queued names to swap or replace.',
+        : ladderMode
+          ? 'Ladder/Waterfall mode — Court 1 is the top rung; record winners to move players up or down the ladder.'
+          : 'Create matches automatically, tap available players to build manually, or tap queued names to swap or replace.',
     ])
   );
 
@@ -87,13 +95,26 @@ export function renderQueueScreen(container: HTMLElement): void {
   );
 
   if (stackMode) {
-    const stack = ensureWinLoseStackState(queueState.winLoseStack);
+    useQueueStore.getState().reconcileWinLoseStackState();
+    const liveQueueState = useQueueStore.getState().queueState;
     container.append(
       renderWinLoseStackPanel({
-        stack,
+        queueState: liveQueueState,
         players,
         openCourtCount: openCourts.length,
-        activeMatchCount: queueState.activeMatches.length,
+        activeMatchCount: liveQueueState.activeMatches.length,
+        onNavigate: () => appRouter.navigate('queue'),
+      })
+    );
+  } else if (ladderMode) {
+    useQueueStore.getState().reconcileLadderState();
+    const liveQueueState = useQueueStore.getState().queueState;
+    container.append(
+      renderLadderWaterfallPanel({
+        queueState: liveQueueState,
+        courts,
+        players,
+        activeMatchCount: liveQueueState.activeMatches.length,
         onNavigate: () => appRouter.navigate('queue'),
       })
     );
@@ -217,4 +238,8 @@ export function renderQueueScreen(container: HTMLElement): void {
       appRouter.navigate('queue');
     },
   });
+
+  if (ladderMode) {
+    mountLadderNoticeRefresh(container, () => appRouter.navigate('queue'));
+  }
 }

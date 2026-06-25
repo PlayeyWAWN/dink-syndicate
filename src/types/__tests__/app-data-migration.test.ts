@@ -90,4 +90,23 @@ describe('migrateAppData', () => {
     expect(migrated.version).toBe(3);
     expect(migrated.settings?.gameMode).toBe('dupr_open_play');
   });
+
+  it('accepts ladder_waterfall as a persisted game mode', () => {
+    const raw = {
+      version: APP_DATA_VERSION,
+      session: SessionSchema.parse({
+        id: 'test-session',
+        organizerName: 'Host',
+        role: 'queue_master',
+        createdAt: Date.now(),
+      }),
+      players: [],
+      courts: [],
+      queueState: { queue: [], activeMatches: [], completedMatches: [] },
+      settings: { organizerName: 'Host', courtCount: 2, gameMode: 'ladder_waterfall' },
+    };
+
+    const migrated = migrateAppData(raw);
+    expect(migrated.settings?.gameMode).toBe('ladder_waterfall');
+  });
 });

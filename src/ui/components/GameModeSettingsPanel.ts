@@ -55,7 +55,7 @@ export function renderGameModeSettingsSection(): HTMLElement {
 
       const confirmed = window.confirm(
         `Switch to ${option.label}?\n\n` +
-          '• Clears the match queue and stack state\n' +
+          '• Clears the match queue and rotation state\n' +
           '• Checked-in players are re-seeded for the new mode\n' +
           '• Completed match history and player stats are kept'
       );
@@ -70,7 +70,9 @@ export function renderGameModeSettingsSection(): HTMLElement {
 
       useSessionStore.getState().updateSessionSettings({ gameMode: nextMode });
       useQueueStore.getState().resetForGameModeChange(nextMode);
-      appRouter.navigate(nextMode === 'win_lose_stack' ? 'queue' : 'settings');
+      appRouter.navigate(
+        nextMode === 'win_lose_stack' || nextMode === 'ladder_waterfall' ? 'queue' : 'settings'
+      );
     });
     gameModeGroup.append(card);
   }
@@ -78,7 +80,7 @@ export function renderGameModeSettingsSection(): HTMLElement {
   return renderSettingsCollapsibleSection(
     [
       el('p', { className: 'screen-lead' }, [
-        'Choose how players rotate for the session. Win/Lose Stack uses double-queue rotation with partner shuffle.',
+        'Choose how players rotate for the session. Stack and Ladder modes use automatic court rotation with partner shuffle.',
       ]),
       gameModeGroup,
     ],

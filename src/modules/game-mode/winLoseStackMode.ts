@@ -1,6 +1,7 @@
 import { createId } from '@/modules/matchmaking/create-id';
 import { winnerIdsForTeam } from '@/lib/format-utils';
 import { Match, QueueState } from '@/types/queue';
+import { isPlayerMatchable, Player } from '@/types/player';
 import {
   emptyWinLoseStackState,
   ensureWinLoseStackState,
@@ -76,6 +77,59 @@ function removeFrontPlayers(
     stack: setStackField(stack, field, remaining),
     pulled,
   };
+}
+
+/**
+ * PK Shiu / open-play cold start: 1–4 players all in Winners; 5+ puts first 4 in
+ * Winners and the rest in the Losers queue (waiting pile, not game losers yet).
+ */
+export function buildInitialStackDistribution(
+  waitingPlayerIds: string[]
+): Pick<WinLoseStackState, 'winnerStack' | 'loserStack' | 'nextUp'> {
+  if (waitingPlayerIds.length <= WIN_LOSE_STACK_PLAYERS) {
+    return {
+      winnerStack: [...waitingPlayerIds],
+      loserStack: [],
+      nextUp: 'winners',
+    };
+  }
+
+  return {
+    winnerStack: waitingPlayerIds.slice(0, WIN_LOSE_STACK_PLAYERS),
+    loserStack: waitingPlayerIds.slice(WIN_LOSE_STACK_PLAYERS),
+    nextUp: 'winners',
+  };
+}
+
+/** Fix sessions where every waiting player was piled into Winners only. */
+export function rebalanceStackQueuesIfNeeded(stack: WinLoseStackState): WinLoseStackState {
+  if (
+    stack.loserStack.length === 0 &&
+    stack.winnerStack.length > WIN_LOSE_STACK_PLAYERS
+  ) {
+    const distributed = buildInitialStackDistribution(stack.winnerStack);
+    return {
+      ...stack,
+      winnerStack: distributed.winnerStack,
+      loserStack: distributed.loserStack,
+      // If Next-Up was stuck on an empty Losers pile, keep it on Losers now that it has players.
+      nextUp:
+        stack.nextUp === 'losers' && distributed.loserStack.length >= WIN_LOSE_STACK_PLAYERS
+          ? 'losers'
+          : distributed.nextUp,
+    };
+  }
+
+  return stack;
+}
+
+function dedupePreserveOrder(ids: string[]): string[] {
+  const seen = new Set<string>();
+  return ids.filter((id) => {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 /** Route winners and losers to the back of their stacks after a match completes. */
@@ -158,8 +212,8 @@ export function startNextStackMatch(
   };
 }
 
-/** Append a checked-in player to the back of the winners stack. */
-export function seedPlayerToWinnersStack(state: QueueState, playerId: string): QueueState {
+/** Append a checked-in player to the shorter waiting stack. */
+export function seedPlayerToStack(state: QueueState, playerId: string): QueueState {
   let stack = ensureWinLoseStackState(state.winLoseStack);
   if (
     stack.winnerStack.includes(playerId) ||
@@ -168,9 +222,24 @@ export function seedPlayerToWinnersStack(state: QueueState, playerId: string): Q
   ) {
     return state;
   }
-  stack = appendToStack(stack, 'winnerStack', [playerId]);
+
+  if (stack.winnerStack.length === 0 && stack.loserStack.length === 0) {
+    stack = appendToStack(stack, 'winnerStack', [playerId]);
+    return { ...state, winLoseStack: stack };
+  }
+
+  const field =
+    stack.winnerStack.length < stack.loserStack.length
+      ? 'winnerStack'
+      : stack.loserStack.length < stack.winnerStack.length
+        ? 'loserStack'
+        : 'loserStack';
+  stack = appendToStack(stack, field, [playerId]);
   return { ...state, winLoseStack: stack };
 }
+
+/** @deprecated Use seedPlayerToStack */
+export const seedPlayerToWinnersStack = seedPlayerToStack;
 
 export function removePlayerFromWinLoseStacks(state: QueueState, playerId: string): QueueState {
   if (!state.winLoseStack) return state;
@@ -194,6 +263,8 @@ export function returnStackMatchToQueue(
     ...stack,
     lastPartnerByPlayer: clearLastPartnersForPlayers(match.playerIds, stack.lastPartnerByPlayer),
   };
+  // Starting the match flipped Next-Up; undo that when the match is cancelled.
+  stack = flipNextUp(stack);
 
   return { ...state, winLoseStack: stack };
 }
@@ -206,11 +277,14 @@ export function seedCheckedInPlayersToWinnersStack(
   state: QueueState,
   checkedInPlayerIds: string[]
 ): QueueState {
-  let next = resetWinLoseStackState(state);
-  for (const playerId of checkedInPlayerIds) {
-    next = seedPlayerToWinnersStack(next, playerId);
-  }
-  return next;
+  const distributed = buildInitialStackDistribution(checkedInPlayerIds);
+  return {
+    ...state,
+    winLoseStack: {
+      ...emptyWinLoseStackState(),
+      ...distributed,
+    },
+  };
 }
 
 export function countNextUpStackPlayers(state: QueueState): number {
@@ -229,4 +303,90 @@ export function canStartWinLoseStackMatch(state: QueueState): boolean {
 
 export function canStartFromStack(stack: WinLoseStackState): boolean {
   return countNextUpStackFromStack(stack) >= WIN_LOSE_STACK_PLAYERS;
+}
+
+/** Ensure every matchable checked-in player appears in a stack (e.g. after mode switch). */
+export function reconcileStackWithCheckedInPlayers(
+  state: QueueState,
+  players: Player[]
+): QueueState {
+  const busy = new Set(state.activeMatches.flatMap((match) => match.playerIds));
+  const stack = ensureWinLoseStackState(state.winLoseStack);
+
+  const waitingInStack = dedupePreserveOrder([
+    ...stack.winnerStack,
+    ...stack.loserStack,
+  ]).filter((id) => !busy.has(id));
+
+  const inStack = new Set(waitingInStack);
+  const missing = players
+    .filter(isPlayerMatchable)
+    .map((player) => player.id)
+    .filter((id) => !inStack.has(id) && !busy.has(id));
+
+  if (stack.loserStack.length === 0 && waitingInStack.length > WIN_LOSE_STACK_PLAYERS) {
+    const allWaiting = dedupePreserveOrder([...waitingInStack, ...missing]);
+    const distributed = buildInitialStackDistribution(allWaiting);
+    return {
+      ...state,
+      winLoseStack: {
+        ...stack,
+        ...distributed,
+        nextUp:
+          stack.nextUp === 'losers' && distributed.loserStack.length >= WIN_LOSE_STACK_PLAYERS
+            ? 'losers'
+            : distributed.nextUp,
+      },
+    };
+  }
+
+  let next = state;
+  for (const id of missing) {
+    next = seedPlayerToStack(next, id);
+  }
+  return next;
+}
+
+export function getStackStartBlockReason(
+  state: QueueState,
+  openCourtCount: number,
+  activeMatchCount: number
+): string | null {
+  const stack = state.winLoseStack;
+  if (!stack) {
+    return 'Stacks not initialized — check in at least 4 players on the Players tab.';
+  }
+
+  if (openCourtCount === 0 && activeMatchCount > 0) {
+    return 'All courts are in use. Record a winner or cancel a match to free a court.';
+  }
+
+  if (openCourtCount === 0) {
+    return 'No courts available. Add at least one court on the Courts tab.';
+  }
+
+  const nextUpCount = countNextUpStackFromStack(stack);
+  if (nextUpCount >= WIN_LOSE_STACK_PLAYERS) {
+    return null;
+  }
+
+  const nextLabel = stack.nextUp === 'winners' ? 'Winners' : 'Losers';
+  const otherLabel = stack.nextUp === 'winners' ? 'Losers' : 'Winners';
+  const otherCount =
+    stack.nextUp === 'winners' ? stack.loserStack.length : stack.winnerStack.length;
+
+  if (otherCount >= WIN_LOSE_STACK_PLAYERS) {
+    return (
+      `Next-Up is the ${nextLabel} stack (${nextUpCount}/4). ` +
+      `${otherCount} players are in the ${otherLabel} waiting pile — ` +
+      `complete games to move players into the ${nextLabel} stack, or refresh the Queue tab to rebalance piles.`
+    );
+  }
+
+  const totalCheckedIn = stack.winnerStack.length + stack.loserStack.length;
+  if (totalCheckedIn < WIN_LOSE_STACK_PLAYERS) {
+    return `Need at least ${WIN_LOSE_STACK_PLAYERS} checked-in players. Currently ${totalCheckedIn} in stacks — check in more on the Players tab.`;
+  }
+
+  return `Need ${WIN_LOSE_STACK_PLAYERS} players in the ${nextLabel} stack (Next-Up). Currently ${nextUpCount}.`;
 }

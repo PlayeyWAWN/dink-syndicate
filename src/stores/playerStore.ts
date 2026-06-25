@@ -8,7 +8,7 @@ import {
 import { useSessionStore } from '@/stores/sessionStore';
 import { useQueueStore } from '@/stores/queueStore';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
-import { isWinLoseStackMode } from '@/types/game-mode';
+import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 
 import { Player, PlayerGender, isPlayerMatchable } from '@/types/player';
 
@@ -69,15 +69,26 @@ function persist(players: Player[]): void {
 
 
 
-function syncStackModeForPlayer(playerId: string, player: Player | undefined): void {
+function syncGameModeForPlayer(playerId: string, player: Player | undefined): void {
   const settings = useSessionStore.getState().loadSnapshot()?.settings;
-  if (!isWinLoseStackMode(getGameMode(settings))) return;
-
+  const gameMode = getGameMode(settings);
   const queue = useQueueStore.getState();
-  if (player && isPlayerMatchable(player)) {
-    queue.onPlayerCheckedInForStackMode(playerId);
-  } else {
-    queue.onPlayerRemovedFromStackMode(playerId);
+
+  if (isWinLoseStackMode(gameMode)) {
+    if (player && isPlayerMatchable(player)) {
+      queue.onPlayerCheckedInForStackMode(playerId);
+    } else {
+      queue.onPlayerRemovedFromStackMode(playerId);
+    }
+    return;
+  }
+
+  if (isLadderWaterfallMode(gameMode)) {
+    if (player && isPlayerMatchable(player)) {
+      queue.onPlayerCheckedInForLadderMode(playerId);
+    } else {
+      queue.onPlayerRemovedFromLadderMode(playerId);
+    }
   }
 }
 
@@ -164,7 +175,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     persist(next);
 
     const player = next.find((item) => item.id === playerId);
-    syncStackModeForPlayer(playerId, player);
+    syncGameModeForPlayer(playerId, player);
 
   },
 
@@ -179,7 +190,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     persist(next);
 
     const player = next.find((item) => item.id === playerId);
-    syncStackModeForPlayer(playerId, player);
+    syncGameModeForPlayer(playerId, player);
 
   },
 
@@ -208,7 +219,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     persist(next);
 
     const player = next.find((item) => item.id === playerId);
-    syncStackModeForPlayer(playerId, player);
+    syncGameModeForPlayer(playerId, player);
 
   },
 

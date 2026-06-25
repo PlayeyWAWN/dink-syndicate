@@ -2,6 +2,7 @@ import { Match, QueueEntry, QueueState } from '@/types/queue';
 import { isPlayerMatchable, isPlayerPaused, Player } from '@/types/player';
 import { createId } from '@/modules/matchmaking/create-id';
 import { getWinLoseStackPlayerIds as collectWinLoseStackPlayerIds } from '@/modules/game-mode/winLoseStackMode';
+import { getLadderPlayerIds as collectLadderPlayerIds } from '@/modules/game-mode/ladderWaterfallMode';
 
 
 /** Queue state operations — match creation lives in MatchmakingService. */
@@ -49,12 +50,18 @@ export class QueueService {
     return collectWinLoseStackPlayerIds(state);
   }
 
-  /** Player IDs assigned to queue, on court, or in Win/Lose stacks. */
+  /** Player IDs on ladder benches or in the waiting pool. */
+  getLadderPlayerIds(state: QueueState): Set<string> {
+    return collectLadderPlayerIds(state);
+  }
+
+  /** Player IDs assigned to queue, on court, or in rotation-mode waiting areas. */
   getBusyPlayerIds(state: QueueState): Set<string> {
     return new Set([
       ...this.getQueuedPlayerIds(state),
       ...this.getActivePlayerIds(state),
       ...this.getWinLoseStackPlayerIds(state),
+      ...this.getLadderPlayerIds(state),
     ]);
   }
 

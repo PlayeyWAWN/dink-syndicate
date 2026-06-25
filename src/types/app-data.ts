@@ -48,8 +48,11 @@ export const AppSettingsSchema = z.object({
     .optional(),
   /** speechSynthesis voiceURI for queue announcements. */
   ttsVoiceUri: z.string().optional(),
-  /** Session rotation system — DUPR open play or Win/Lose Stack. */
-  gameMode: z.enum(['dupr_open_play', 'win_lose_stack']).default(DEFAULT_GAME_MODE).optional(),
+  /** Session rotation system — DUPR open play, Win/Lose Stack, or Ladder/Waterfall. */
+  gameMode: z
+    .enum(['dupr_open_play', 'win_lose_stack', 'ladder_waterfall'])
+    .default(DEFAULT_GAME_MODE)
+    .optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;

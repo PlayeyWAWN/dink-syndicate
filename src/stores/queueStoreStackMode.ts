@@ -3,9 +3,12 @@ import { usePlayerStore } from '@/stores/playerStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { playerService } from '@/modules/players/PlayerService';
 import { queueService } from '@/modules/queue/QueueService';
+import { courtService } from '@/modules/courts/CourtService';
+import { DEFAULT_COURT_COUNT, DEFAULT_ORGANIZER_NAME } from '@/config/constants';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import {
   canStartWinLoseStackMatch,
+  reconcileStackWithCheckedInPlayers,
   removePlayerFromWinLoseStacks,
   resetWinLoseStackState,
   returnStackMatchToQueue,
@@ -15,8 +18,9 @@ import {
   startNextStackMatch,
 } from '@/modules/game-mode/winLoseStackMode';
 import { GameMode, isWinLoseStackMode } from '@/types/game-mode';
-import { Match, QueueState } from '@/types/queue';
+import { isRotationPaused, Match, QueueState } from '@/types/queue';
 import { Player, isPlayerMatchable } from '@/types/player';
+import { buildLadderQueueStateForGameModeChange } from '@/stores/queueStoreLadderMode';
 
 export function isStackModeActive(): boolean {
   const settings = useSessionStore.getState().loadSnapshot()?.settings;
@@ -25,9 +29,29 @@ export function isStackModeActive(): boolean {
 
 export function seedStackOnHydrate(queueState: QueueState, players: Player[]): QueueState {
   if (!isStackModeActive()) return queueState;
-  if (queueState.winLoseStack) return queueState;
-  const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
-  return seedCheckedInPlayersToWinnersStack(queueState, checkedInIds);
+  if (isRotationPaused(queueState)) return queueState;
+  let next = queueState.winLoseStack ? queueState : seedCheckedInPlayersToWinnersStack(queueState, []);
+  next = reconcileStackWithCheckedInPlayers(next, players);
+  return next;
+}
+
+export function ensureCourtsForStackMode(): void {
+  const courts = useCourtStore.getState().courts;
+  if (courts.length > 0) return;
+
+  const ensured = courtService.ensureCourts([], DEFAULT_COURT_COUNT);
+  const snapshot = useSessionStore.getState().loadSnapshot();
+  useSessionStore.getState().persistSnapshot({
+    courts: ensured,
+    settings: {
+      courtCount: ensured.length,
+      organizerName:
+        snapshot?.settings?.organizerName ??
+        useSessionStore.getState().session?.organizerName ??
+        DEFAULT_ORGANIZER_NAME,
+    },
+  });
+  useCourtStore.getState().hydrate();
 }
 
 export function handleStackModeCancelMatch(
@@ -95,6 +119,7 @@ export function buildQueueStateForGameModeChange(
   const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
 
   if (newMode === 'win_lose_stack') {
+    ensureCourtsForStackMode();
     return seedCheckedInPlayersToWinnersStack(
       {
         queue: [],
@@ -106,11 +131,16 @@ export function buildQueueStateForGameModeChange(
     );
   }
 
+  if (newMode === 'ladder_waterfall') {
+    return buildLadderQueueStateForGameModeChange(current, players);
+  }
+
   return {
     queue: [],
     activeMatches: [],
     completedMatches: current.completedMatches,
     winLoseStack: undefined,
+    ladderWaterfall: undefined,
   };
 }
 

@@ -1,5 +1,13 @@
 import { create } from 'zustand';
 import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
+import { createId } from '@/modules/matchmaking/create-id';
+
+export interface LadderStartNotice {
+  id: string;
+  courtLabel: string;
+  playerNames: string[];
+  createdAt: number;
+}
 
 interface QueueUiState {
   courtFormat: CourtFormat;
@@ -9,6 +17,7 @@ interface QueueUiState {
   excludedSearchQuery: string;
   availableSectionOpen: boolean;
   excludedSectionOpen: boolean;
+  ladderStartNotices: LadderStartNotice[];
   setCourtFormat: (format: CourtFormat) => void;
   setMatchMode: (mode: QueueMatchMode) => void;
   toggleSelectedPlayer: (playerId: string) => void;
@@ -17,6 +26,12 @@ interface QueueUiState {
   setExcludedSearchQuery: (query: string) => void;
   setAvailableSectionOpen: (open: boolean) => void;
   setExcludedSectionOpen: (open: boolean) => void;
+  pushLadderStartNotices: (
+    notices: Array<Pick<LadderStartNotice, 'courtLabel' | 'playerNames'>>
+  ) => void;
+  setLadderStartNotices: (notices: LadderStartNotice[]) => void;
+  removeLadderStartNotice: (id: string) => void;
+  clearLadderStartNotices: () => void;
 }
 
 export const useQueueUiStore = create<QueueUiState>((set, get) => ({
@@ -27,6 +42,7 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   excludedSearchQuery: '',
   availableSectionOpen: true,
   excludedSectionOpen: true,
+  ladderStartNotices: [],
   setCourtFormat: (courtFormat) => set({ courtFormat, selectedPlayerIds: [] }),
   setMatchMode: (matchMode) => set({ matchMode, selectedPlayerIds: [] }),
   toggleSelectedPlayer: (playerId) => {
@@ -42,6 +58,22 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   setExcludedSearchQuery: (excludedSearchQuery) => set({ excludedSearchQuery }),
   setAvailableSectionOpen: (availableSectionOpen) => set({ availableSectionOpen }),
   setExcludedSectionOpen: (excludedSectionOpen) => set({ excludedSectionOpen }),
+  pushLadderStartNotices: (notices) => {
+    if (notices.length === 0) return;
+    const now = Date.now();
+    const next = notices.map((notice) => ({
+      ...notice,
+      id: createId('ladder-notice'),
+      createdAt: now,
+    }));
+    set((state) => ({ ladderStartNotices: [...state.ladderStartNotices, ...next] }));
+  },
+  setLadderStartNotices: (ladderStartNotices) => set({ ladderStartNotices }),
+  removeLadderStartNotice: (id) =>
+    set((state) => ({
+      ladderStartNotices: state.ladderStartNotices.filter((notice) => notice.id !== id),
+    })),
+  clearLadderStartNotices: () => set({ ladderStartNotices: [] }),
 }));
 
 export type { CourtFormat, QueueMatchMode };

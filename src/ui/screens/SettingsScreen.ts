@@ -16,7 +16,10 @@ import {
   serializeRosterExport,
 } from '@/modules/session/RosterTransferService';
 import { usePlayerStore } from '@/stores/playerStore';
+import { useQueueStore } from '@/stores/queueStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { getGameMode } from '@/modules/game-mode/getGameMode';
+import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 import { appRouter } from '@/app/router';
 import { renderSettingsCollapsibleSection } from '@/ui/components/SettingsCollapsibleSection';
 import { renderTtsSettingsPanel } from '@/ui/components/TtsSettingsPanel';
@@ -283,12 +286,32 @@ export function renderSettingsScreen(container: HTMLElement): void {
     const defaultName = defaultArchiveName();
     const name = window.prompt('Archive name for this session:', defaultName);
     if (name === null) return;
+
+    const gameMode = getGameMode(current.settings);
+    const rotationMode = isWinLoseStackMode(gameMode) || isLadderWaterfallMode(gameMode);
+    const queueState = useQueueStore.getState().queueState;
+    const rotationPaused = queueState.rotationPaused === true;
+    const activeCount = queueState.activeMatches.length;
+
+    let rotationNote = '';
+    if (rotationMode) {
+      if (!rotationPaused) {
+        rotationNote =
+          '• Stop rotation on the Queue tab first so no new games start while you wrap up.\n';
+      }
+      if (activeCount > 0) {
+        rotationNote +=
+          `• ${activeCount} active match${activeCount === 1 ? '' : 'es'} will be cleared — only completed games are archived.\n`;
+      }
+    }
+
     const confirmed = window.confirm(
       `End session and save "${name.trim() || defaultName}"?\n\n` +
         '• Archives session stats for all players\n' +
         '• Clears queue, courts, and session win/loss counts\n' +
-        '• Career totals are preserved\n\n' +
-        'Session start time is not changed.'
+        '• Career totals are preserved\n' +
+        rotationNote +
+        '\nSession start time is not changed.'
     );
     if (!confirmed) return;
     endSessionAndArchive(name);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LadderWaterfallStateSchema, MatchLadderMetaSchema } from '@/types/ladder-waterfall';
 import { MatchStackMetaSchema, WinLoseStackStateSchema } from '@/types/win-lose-stack';
 
 export const QueueEntrySchema = z.object({
@@ -50,6 +51,8 @@ export const MatchSchema = z.object({
   dupr: MatchDuprMetaSchema.optional(),
   /** Win/Lose Stack mode — tracks which stack fed this match (for cancel routing). */
   stackMeta: MatchStackMetaSchema.optional(),
+  /** Ladder/Waterfall mode — tracks source court bench (for cancel routing). */
+  ladderMeta: MatchLadderMetaSchema.optional(),
 });
 
 export type Match = z.infer<typeof MatchSchema>;
@@ -59,6 +62,13 @@ export const QueueStateSchema = z.object({
   activeMatches: z.array(MatchSchema).default([]),
   completedMatches: z.array(MatchSchema).default([]),
   winLoseStack: WinLoseStackStateSchema.optional(),
+  ladderWaterfall: LadderWaterfallStateSchema.optional(),
+  /** When true, stack/ladder modes do not auto-start matches (session wrap-up). */
+  rotationPaused: z.boolean().default(false).optional(),
 });
 
 export type QueueState = z.infer<typeof QueueStateSchema>;
+
+export function isRotationPaused(state: QueueState | undefined): boolean {
+  return state?.rotationPaused === true;
+}
