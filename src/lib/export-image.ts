@@ -1,7 +1,8 @@
 /** DOM capture helpers for offline PNG downloads. */
 
 import { finalizeExportReportLayout } from '@/lib/export-logo';
-import { StatsView, statsViewExportSlug } from '@/modules/stats/StatsReportService';
+import { statsViewExportSlug } from '@/modules/stats/StatsReportService';
+import type { StatsView } from '@/types/player';
 
 const EXPORT_REPORT_BG = '#334155';
 const EXPORT_REPORT_TEXT = '#f8fafc';

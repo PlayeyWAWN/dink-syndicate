@@ -1,0 +1,209 @@
+/* Arrival analytics — session check-in tiers */
+.arrival-analytics {
+  overflow: hidden;
+}
+
+.arrival-analytics__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.arrival-analytics__title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.arrival-analytics__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.arrival-analytics__empty {
+  margin: 0;
+}
+
+.arrival-analytics__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.arrival-analytics__tier-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 5.25rem;
+  padding: 0.65rem 0.45rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-align: center;
+  color: #f8fafc;
+}
+
+.arrival-analytics__tier-count {
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.arrival-analytics__tier-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.arrival-analytics__tier-meta {
+  font-size: 0.68rem;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.arrival-analytics__tier-card--early {
+  background: linear-gradient(145deg, #0f766e, #115e59);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.arrival-analytics__tier-card--onTime {
+  background: linear-gradient(145deg, #15803d, #166534);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.arrival-analytics__tier-card--grace {
+  background: linear-gradient(145deg, #b45309, #92400e);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.arrival-analytics__tier-card--late {
+  background: linear-gradient(145deg, #c2410c, #9a3412);
+  border-color: rgba(251, 146, 60, 0.4);
+}
+
+.arrival-analytics__tier-card--veryLate {
+  background: linear-gradient(145deg, #b91c1c, #991b1b);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.arrival-analytics__tier-card--notCheckedIn {
+  background: var(--stat-card-bg);
+  border-color: var(--stat-card-border);
+  color: var(--text-on-surface);
+}
+
+.arrival-analytics__tier-card--notCheckedIn .arrival-analytics__tier-meta {
+  color: var(--text-muted);
+}
+
+.arrival-analytics__session-start {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+.arrival-analytics__session-start-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.arrival-analytics__session-start-value {
+  font-size: 0.92rem;
+  color: var(--text-on-surface);
+}
+
+.arrival-analytics__legend {
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.arrival-analytics__groups-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-on-surface);
+}
+
+.arrival-analytics__tier-group {
+  margin-bottom: 0.75rem;
+}
+
+.arrival-analytics__tier-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
+}
+
+.arrival-analytics__tier-group-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-on-surface);
+}
+
+.arrival-analytics__player-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.arrival-analytics__player-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f8fafc;
+  border: 1px solid transparent;
+}
+
+.arrival-analytics__player-chip--early {
+  background: rgba(15, 118, 110, 0.85);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.arrival-analytics__player-chip--onTime {
+  background: rgba(21, 128, 61, 0.85);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.arrival-analytics__player-chip--grace {
+  background: rgba(180, 83, 9, 0.9);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.arrival-analytics__player-chip--late {
+  background: rgba(194, 65, 12, 0.9);
+  border-color: rgba(251, 146, 60, 0.35);
+}
+
+.arrival-analytics__player-chip--veryLate {
+  background: rgba(185, 28, 28, 0.9);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.arrival-analytics__player-chip--notCheckedIn {
+  background: var(--pill-bg);
+  border-color: var(--surface-border);
+  color: var(--text-muted);
+}

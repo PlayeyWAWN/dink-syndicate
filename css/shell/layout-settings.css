@@ -1,0 +1,158 @@
+/**
+ * Settings panels — app info, data management.
+ */
+
+/* —— Settings → App information —— */
+.app-info__version {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--text-on-surface);
+}
+
+.app-info__version strong {
+  color: var(--accent);
+}
+
+.app-info__easter-egg {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 0.5rem;
+  border-left: 3px solid var(--accent);
+}
+
+.app-info__easter-egg abbr {
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: help;
+}
+
+.app-info-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.app-info-faq {
+  border: 1px solid var(--surface-border);
+  border-radius: 0.5rem;
+  background: rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.app-info-faq__summary {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-on-surface);
+}
+
+.app-info-faq__summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-info-faq[open] > .app-info-faq__summary {
+  border-bottom: 1px solid var(--surface-border);
+  color: var(--accent);
+}
+
+.app-info-faq__answer {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.app-info__contact-link {
+  display: inline-flex;
+  text-decoration: none;
+  margin-top: 0.35rem;
+}
+
+/* —— Settings → Data management —— */
+.data-mgmt__warning {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.22);
+}
+
+.data-mgmt__warning-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fecaca;
+}
+
+.data-mgmt__warning-body {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.data-mgmt__backup-notice {
+  margin: 0 0 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(120, 53, 15, 0.2);
+}
+
+.data-mgmt__backup-notice-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #fde68a;
+}
+
+.data-mgmt__backup-notice-body {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-on-surface);
+}
+
+.data-mgmt__impact-list {
+  margin: 0 0 0.85rem;
+  padding-left: 1.15rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-on-surface);
+}
+
+.data-mgmt__impact-list li {
+  margin-bottom: 0.25rem;
+}
+
+.data-mgmt__confirm-hint {
+  margin-bottom: 0.75rem;
+}
+
+.data-mgmt__delete-btn {
+  width: 100%;
+  max-width: 20rem;
+}
+
+.match-timer {
+  font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 20px;
+  }
+}

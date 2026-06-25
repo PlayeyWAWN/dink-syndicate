@@ -4,7 +4,8 @@ import {
   mountRankingPodiumIcon,
   PodiumRank,
 } from '@/ui/icons/ranking-podium-icons';
-import { StatsView, statsViewLabel } from '@/modules/stats/StatsReportService';
+import { statsViewLabel } from '@/modules/stats/StatsReportService';
+import type { StatsView } from '@/types/player';
 
 export function createStatsScopeBadge(
   statsView: StatsView,
