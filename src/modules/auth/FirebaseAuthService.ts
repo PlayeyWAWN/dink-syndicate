@@ -17,6 +17,7 @@ function userToSession(user: User): Session {
   return SessionSchema.parse({
     id: user.uid,
     organizerName: user.displayName?.trim() || user.email?.split('@')[0] || DEFAULT_ORGANIZER_NAME,
+    email: user.email ?? undefined,
     role: 'queue_master',
     createdAt: user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : Date.now(),
   });

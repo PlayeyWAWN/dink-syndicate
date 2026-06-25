@@ -1,13 +1,14 @@
 import { isFirebaseEnabled } from '@/config/firebase';
+import { getFirebaseAuth } from '@/config/firebase-app';
 import { el } from '@/lib/dom-utils';
 import { getAuthService } from '@/modules/auth/getAuthService';
 import { showAuthOverlay } from '@/app/auth-gate';
 import { useSessionStore } from '@/stores/sessionStore';
 
-/** Settings panel — signed-in account and sign out (Firebase only). */
+/** Settings → Account management — sign out and signed-in email. */
 export function renderAccountSettingsPanel(): HTMLElement {
   const section = el('div', { className: 'card settings-section settings-section--static' });
-  section.append(el('h3', {}, ['Account']));
+  section.append(el('h3', {}, ['Account management']));
 
   if (!isFirebaseEnabled()) {
     section.append(
@@ -19,9 +20,8 @@ export function renderAccountSettingsPanel(): HTMLElement {
   }
 
   const session = useSessionStore.getState().session;
-  const emailLine = el('p', { className: 'screen-lead settings-preview', id: 'settings-signed-in-email' }, [
-    session ? `Signed in as ${session.organizerName}` : 'Not signed in',
-  ]);
+  const signedInEmail =
+    session?.email ?? getFirebaseAuth()?.currentUser?.email ?? 'Not signed in';
 
   const signOutBtn = el('button', { type: 'button', className: 'btn btn-secondary' }, ['Sign out']);
   signOutBtn.addEventListener('click', async () => {
@@ -31,12 +31,18 @@ export function renderAccountSettingsPanel(): HTMLElement {
     showAuthOverlay();
   });
 
+  const emailText = signedInEmail;
+  const emailLine = el('p', {
+    className: 'settings-account-email',
+    id: 'settings-signed-in-email',
+  }, [emailText]);
+
   section.append(
-    emailLine,
     el('p', { className: 'screen-lead' }, [
       'Sign out of your account and return to the login screen.',
     ]),
-    signOutBtn
+    signOutBtn,
+    emailLine
   );
 
   return section;

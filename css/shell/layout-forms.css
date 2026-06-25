@@ -151,6 +151,14 @@
   margin: 0 0 0.5rem;
 }
 
+.settings-account-email {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-on-surface);
+  word-break: break-all;
+}
+
 .file-label {
   display: inline-block;
   margin-top: 0.5rem;
