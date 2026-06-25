@@ -432,3 +432,104 @@ details:not([open]) .queue-section-accordion__collapsed-hint {
 .available-player-card--has-pause .available-player-card__meta {
   padding-right: 1.85rem;
 }
+
+/* —— Win/Lose Stack panel —— */
+.win-lose-stack__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 520px) {
+  .win-lose-stack__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.win-lose-stack__column {
+  border: 1px solid var(--surface-border);
+  border-radius: 0.65rem;
+  background: rgba(15, 23, 42, 0.22);
+  padding: 0.65rem;
+}
+
+.win-lose-stack__column--next-up {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15);
+}
+
+.win-lose-stack__column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.win-lose-stack__column-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.win-lose-stack__next-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.win-lose-stack__count {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.win-lose-stack__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.win-lose-stack__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+}
+
+.win-lose-stack__position {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.15);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.win-lose-stack__column--next-up .win-lose-stack__item:first-child .win-lose-stack__position {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.win-lose-stack__empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.win-lose-stack__hint {
+  margin: 0.35rem 0 0;
+}
+

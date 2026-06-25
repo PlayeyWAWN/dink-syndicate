@@ -43,7 +43,7 @@ describe('migrateAppData', () => {
 
   it('leaves v2 snapshots unchanged aside from validation defaults', () => {
     const raw = {
-      version: APP_DATA_VERSION,
+      version: 2,
       session: SessionSchema.parse({
         id: 'test-session',
         organizerName: 'Host',
@@ -66,7 +66,28 @@ describe('migrateAppData', () => {
     };
 
     const migrated = migrateAppData(raw);
+    expect(migrated.version).toBe(APP_DATA_VERSION);
     expect(migrated.sessionArchives).toHaveLength(1);
     expect(migrated.sessionArchives[0]?.name).toBe('Jun 24 Open Play');
+    expect(migrated.settings?.gameMode).toBe('dupr_open_play');
+  });
+
+  it('migrates v2 snapshots to v3 with default game mode', () => {
+    const raw = {
+      version: 2,
+      session: SessionSchema.parse({
+        id: 'test-session',
+        organizerName: 'Host',
+        role: 'queue_master',
+        createdAt: Date.now(),
+      }),
+      players: [],
+      courts: [],
+      queueState: { queue: [], activeMatches: [], completedMatches: [] },
+    };
+
+    const migrated = migrateAppData(raw);
+    expect(migrated.version).toBe(3);
+    expect(migrated.settings?.gameMode).toBe('dupr_open_play');
   });
 });

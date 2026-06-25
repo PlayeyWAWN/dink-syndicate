@@ -20,7 +20,20 @@ import { toSessionSettings } from '@/types/app-data';
 import { useCourtStore } from '@/stores/courtStore';
 import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
 import { QueueState, QueueEntry } from '@/types/queue';
-import { Player } from '@/types/player';
+import { Player, isPlayerMatchable } from '@/types/player';
+import { GameMode } from '@/types/game-mode';
+import {
+  buildQueueStateForGameModeChange,
+  handleStackModeCancelMatch,
+  handleStackModeCompleteMatch,
+  isStackModeActive,
+  reconcileAvailableSinceForQueue,
+  removePlayerForStackMode,
+  seedPlayerForStackMode,
+  seedStackOnHydrate,
+  syncStackPlayerAvailability,
+  tryStartWinLoseStackMatchFromStore,
+} from '@/stores/queueStoreStackMode';
 const emptyQueueState = (): QueueState => ({
   queue: [],
   activeMatches: [],
@@ -52,6 +65,10 @@ interface QueueStoreState {
     update: CompletedMatchUpdate
   ) => { ok: true } | { ok: false; message: string };
   clearSessionQueue: () => void;
+  tryStartWinLoseStackMatch: (preferredCourtId?: string) => boolean;
+  onPlayerCheckedInForStackMode: (playerId: string) => void;
+  onPlayerRemovedFromStackMode: (playerId: string) => void;
+  resetForGameModeChange: (newMode: GameMode) => void;
 }
 function persist(state: QueueState): void {
   useSessionStore.getState().persistSnapshot({ queueState: state });
@@ -89,14 +106,7 @@ function getPlayersWithExpiredPausesCleared(): Player[] {
 }
 
 function reconcileAvailableSince(state: QueueState): void {
-  const players = usePlayerStore.getState().players;
-  const availableIds = new Set(
-    queueService.getAvailablePlayers(players, state).map((player) => player.id)
-  );
-  const next = playerService.syncAvailableSince(players, availableIds);
-  if (next.some((player, index) => player !== players[index])) {
-    usePlayerStore.getState().replaceAll(next);
-  }
+  reconcileAvailableSinceForQueue(state);
 }
 
 export const useQueueStore = create<QueueStoreState>((set, get) => {
@@ -114,7 +124,9 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
 
     hydrate: () => {
       const snapshot = useSessionStore.getState().loadSnapshot();
-      const queueState = snapshot?.queueState ?? emptyQueueState();
+      const players = snapshot?.players ?? [];
+      let queueState = snapshot?.queueState ?? emptyQueueState();
+      queueState = seedStackOnHydrate(queueState, players);
       set({ queueState });
       reconcileAvailableSince(queueState);
     },
@@ -255,6 +267,17 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       const match = get().queueState.activeMatches.find((item) => item.id === matchId);
       if (!match) return false;
 
+      if (isStackModeActive() && match.stackMeta) {
+        const nextState = handleStackModeCancelMatch(get().queueState, match);
+        set({ queueState: nextState });
+        if (match.courtId) {
+          useCourtStore.getState().clearCourt(match.courtId);
+        }
+        persist(nextState);
+        syncPlayerAvailability({ unavailable: match.playerIds });
+        return true;
+      }
+
       const nextState = queueService.returnActiveMatchToQueue(get().queueState, matchId);
       if (!nextState) return false;
 
@@ -379,6 +402,25 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
         completedMatch
       );
 
+      const freedCourtId = match.courtId;
+
+      if (isStackModeActive()) {
+        const routedState = handleStackModeCompleteMatch(nextState, match, winningTeam);
+        set({ queueState: routedState });
+        usePlayerStore.getState().replaceAll(updatedPlayers);
+
+        if (freedCourtId) {
+          useCourtStore.getState().clearCourt(freedCourtId);
+        }
+
+        persist(routedState);
+
+        if (freedCourtId) {
+          get().tryStartWinLoseStackMatch(freedCourtId);
+        }
+        return true;
+      }
+
       set({ queueState: nextState });
       usePlayerStore.getState().replaceAll(updatedPlayers);
       syncPlayerAvailability({ available: match.playerIds });
@@ -419,6 +461,57 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       const players = usePlayerStore.getState().players;
       const availableIds = queueService.getAvailablePlayers(players, empty).map((p) => p.id);
       syncPlayerAvailability({ available: availableIds });
+    },
+
+    tryStartWinLoseStackMatch: (preferredCourtId) => {
+      const { state, match } = tryStartWinLoseStackMatchFromStore(
+        get().queueState,
+        preferredCourtId
+      );
+      if (!match) return false;
+
+      set({ queueState: state });
+      persist(state);
+      syncStackPlayerAvailability({ unavailable: match.playerIds });
+      return true;
+    },
+
+    onPlayerCheckedInForStackMode: (playerId) => {
+      if (!isStackModeActive()) return;
+
+      const nextState = seedPlayerForStackMode(get().queueState, playerId);
+      set({ queueState: nextState });
+      persist(nextState);
+      syncStackPlayerAvailability({ unavailable: [playerId] });
+      get().tryStartWinLoseStackMatch();
+    },
+
+    onPlayerRemovedFromStackMode: (playerId) => {
+      if (!isStackModeActive()) return;
+
+      const nextState = removePlayerForStackMode(get().queueState, playerId);
+      if (nextState === get().queueState) return;
+
+      set({ queueState: nextState });
+      persist(nextState);
+    },
+
+    resetForGameModeChange: (newMode) => {
+      const current = get().queueState;
+      const players = usePlayerStore.getState().players;
+      const nextState = buildQueueStateForGameModeChange(current, newMode, players);
+
+      set({ queueState: nextState });
+      persist(nextState);
+
+      if (newMode === 'win_lose_stack') {
+        const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
+        syncStackPlayerAvailability({ unavailable: checkedInIds });
+        get().tryStartWinLoseStackMatch();
+        return;
+      }
+
+      reconcileAvailableSince(nextState);
     },
   };
 });

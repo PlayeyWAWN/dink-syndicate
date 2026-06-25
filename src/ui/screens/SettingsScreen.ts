@@ -15,9 +15,7 @@ import {
   parseRosterImportJson,
   serializeRosterExport,
 } from '@/modules/session/RosterTransferService';
-import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
-import { useQueueStore } from '@/stores/queueStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { appRouter } from '@/app/router';
 import { renderSettingsCollapsibleSection } from '@/ui/components/SettingsCollapsibleSection';
@@ -26,6 +24,7 @@ import { reloadAllStores } from '@/modules/session/DataManagementService';
 import { renderAppInformationPanel } from '@/ui/components/AppInformationPanel';
 import { renderAccountSettingsPanel } from '@/ui/components/AccountSettingsPanel';
 import { renderDataManagementPanel } from '@/ui/components/DataManagementPanel';
+import { renderGameModeSettingsSection } from '@/ui/components/GameModeSettingsPanel';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
 
 function reloadStoresAfterSessionChange(): void {
@@ -100,6 +99,8 @@ export function renderSettingsScreen(container: HTMLElement): void {
     open: settingsUi.organizerSectionOpen,
     onToggle: (open) => useSettingsUiStore.getState().setOrganizerSectionOpen(open),
   });
+
+  const gameModeSection = renderGameModeSettingsSection();
 
   const startField = el('div', { className: 'player-form__field' });
   startField.append(el('label', { className: 'player-form__label', for: 'session-start-time' }, [
@@ -511,6 +512,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
   container.append(
     renderAccountSettingsPanel(),
     orgSection,
+    gameModeSection,
     sessionSection,
     renderTtsSettingsPanel(),
     transferSection,

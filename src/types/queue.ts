@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MatchStackMetaSchema, WinLoseStackStateSchema } from '@/types/win-lose-stack';
 
 export const QueueEntrySchema = z.object({
   id: z.string().min(1),
@@ -47,6 +48,8 @@ export const MatchSchema = z.object({
   /** Unix ms when the match result was last corrected. */
   correctedAt: z.number().int().nonnegative().optional(),
   dupr: MatchDuprMetaSchema.optional(),
+  /** Win/Lose Stack mode — tracks which stack fed this match (for cancel routing). */
+  stackMeta: MatchStackMetaSchema.optional(),
 });
 
 export type Match = z.infer<typeof MatchSchema>;
@@ -55,6 +58,7 @@ export const QueueStateSchema = z.object({
   queue: z.array(QueueEntrySchema).default([]),
   activeMatches: z.array(MatchSchema).default([]),
   completedMatches: z.array(MatchSchema).default([]),
+  winLoseStack: WinLoseStackStateSchema.optional(),
 });
 
 export type QueueState = z.infer<typeof QueueStateSchema>;

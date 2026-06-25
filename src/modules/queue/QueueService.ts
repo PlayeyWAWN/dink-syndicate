@@ -1,6 +1,7 @@
 import { Match, QueueEntry, QueueState } from '@/types/queue';
 import { isPlayerMatchable, isPlayerPaused, Player } from '@/types/player';
 import { createId } from '@/modules/matchmaking/create-id';
+import { getWinLoseStackPlayerIds as collectWinLoseStackPlayerIds } from '@/modules/game-mode/winLoseStackMode';
 
 
 /** Queue state operations — match creation lives in MatchmakingService. */
@@ -43,11 +44,25 @@ export class QueueService {
 
 
 
+  /** Player IDs waiting in Win/Lose stacks. */
+  getWinLoseStackPlayerIds(state: QueueState): Set<string> {
+    return collectWinLoseStackPlayerIds(state);
+  }
+
+  /** Player IDs assigned to queue, on court, or in Win/Lose stacks. */
+  getBusyPlayerIds(state: QueueState): Set<string> {
+    return new Set([
+      ...this.getQueuedPlayerIds(state),
+      ...this.getActivePlayerIds(state),
+      ...this.getWinLoseStackPlayerIds(state),
+    ]);
+  }
+
   /** Checked-in players not waiting in queue or playing on a court. */
 
   getAvailablePlayers(players: Player[], state: QueueState): Player[] {
 
-    const busy = new Set([...this.getQueuedPlayerIds(state), ...this.getActivePlayerIds(state)]);
+    const busy = this.getBusyPlayerIds(state);
 
     return players.filter((p) => isPlayerMatchable(p) && !busy.has(p.id));
 
@@ -59,7 +74,7 @@ export class QueueService {
 
   getStandbyExcludedPlayers(players: Player[], state: QueueState, now = Date.now()): Player[] {
 
-    const busy = new Set([...this.getQueuedPlayerIds(state), ...this.getActivePlayerIds(state)]);
+    const busy = this.getBusyPlayerIds(state);
 
     return players.filter(
       (p) =>

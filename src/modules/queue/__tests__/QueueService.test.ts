@@ -25,6 +25,26 @@ describe('QueueService', () => {
     expect(available[0].id).toBe('p4');
   });
 
+  it('excludes Win/Lose stack players from available pool', () => {
+    const players = Array.from({ length: 5 }, (_, i) =>
+      createPlayer({ id: `p${i}`, name: `P${i}`, checkedIn: true })
+    );
+    const state = {
+      queue: [],
+      activeMatches: [],
+      completedMatches: [],
+      winLoseStack: {
+        winnerStack: ['p0', 'p1', 'p2'],
+        loserStack: ['p3'],
+        nextUp: 'winners' as const,
+        lastPartnerByPlayer: {},
+      },
+    };
+    const available = service.getAvailablePlayers(players, state);
+    expect(available).toHaveLength(1);
+    expect(available[0].id).toBe('p4');
+  });
+
   it('excludes excluded players from available pool', () => {
     const players = [
       createPlayer({ id: 'p0', name: 'A', checkedIn: true }),
