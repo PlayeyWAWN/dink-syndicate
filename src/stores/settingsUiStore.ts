@@ -18,13 +18,13 @@ interface SettingsUiState {
 }
 
 export const useSettingsUiStore = create<SettingsUiState>((set) => ({
-  accountSectionOpen: false,
-  organizerSectionOpen: false,
-  sessionSectionOpen: true,
-  ttsSectionOpen: true,
-  transferSectionOpen: true,
-  appInfoSectionOpen: true,
-  dataManagementSectionOpen: true,
+  accountSectionOpen: true,
+  organizerSectionOpen: true,
+  sessionSectionOpen: false,
+  ttsSectionOpen: false,
+  transferSectionOpen: false,
+  appInfoSectionOpen: false,
+  dataManagementSectionOpen: false,
   setAccountSectionOpen: (accountSectionOpen) => set({ accountSectionOpen }),
   setOrganizerSectionOpen: (organizerSectionOpen) => set({ organizerSectionOpen }),
   setSessionSectionOpen: (sessionSectionOpen) => set({ sessionSectionOpen }),
