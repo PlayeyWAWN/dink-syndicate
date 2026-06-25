@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dink Syndicate">
+  <rect width="512" height="512" rx="96" fill="#0f172a"/>
+  <path d="M256 56 L404 124 V272 Q404 384 256 448 Q108 384 108 272 V124 Z" fill="#14b8a6" stroke="#1e293b" stroke-width="14"/>
+  <path d="M256 56 V448" stroke="#0f766e" stroke-width="6" opacity="0.45"/>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M168 118 L344 286" stroke="#cbd5e1" stroke-width="34"/>
+    <path d="M344 118 L168 286" stroke="#cbd5e1" stroke-width="34"/>
+    <path d="M168 118 L344 286" stroke="#1e293b" stroke-width="18"/>
+    <path d="M344 118 L168 286" stroke="#1e293b" stroke-width="18"/>
+    <rect x="148" y="98" width="52" height="92" rx="10" fill="#1e293b" transform="rotate(-38 174 144)"/>
+    <rect x="312" y="98" width="52" height="92" rx="10" fill="#1e293b" transform="rotate(38 338 144)"/>
+  </g>
+  <path d="M132 318 H380 L352 362 H160 Z" fill="#1e293b"/>
+  <text x="256" y="352" text-anchor="middle" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="4">DINK</text>
+</svg>

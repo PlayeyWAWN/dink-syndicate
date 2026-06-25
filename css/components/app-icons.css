@@ -1,0 +1,148 @@
+/**
+ * Shared Iconify inline SVG sizing and semantic colors.
+ */
+
+.app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+
+.app-icon svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.app-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.app-icon-label__text {
+  line-height: 1.2;
+}
+
+.app-icon--user-male,
+.app-icon--user-female {
+  width: 1.35em;
+  height: 1.35em;
+}
+
+.app-icon--checked-in,
+.app-icon--active,
+.app-icon--tier-early,
+.app-icon--tier-on-time {
+  color: #4ade80;
+}
+
+.app-icon--not-checked-in {
+  color: #fbbf24;
+}
+
+.app-icon--excluded {
+  color: #f87171;
+}
+
+.app-icon--tier-grace {
+  color: #fbbf24;
+}
+
+.app-icon--tier-late {
+  color: #fb923c;
+}
+
+.app-icon--tier-very-late {
+  color: #f87171;
+}
+
+.app-icon--tier-not-checked-in {
+  color: rgba(248, 250, 252, 0.45);
+}
+
+.btn .app-icon {
+  width: 1em;
+  height: 1em;
+}
+
+.btn .app-icon + .app-icon-label__text,
+.btn .app-icon-label {
+  margin-left: 0;
+}
+
+.btn .app-icon-label {
+  gap: 0.3rem;
+}
+
+.btn:has(.app-icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.match-player-chip__icon.app-icon,
+.players-list .avatar--roster.app-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.players-list .avatar--roster {
+  font-size: 0;
+}
+
+.mode-icon .app-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--accent);
+}
+
+.players-summary__stat .app-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.players-filter-btn .app-icon {
+  width: 0.95em;
+  height: 0.95em;
+}
+
+.reg-gender-picker__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.reg-gender-picker__btn .app-icon {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.manual-match-bar__chip-check.app-icon,
+.available-player-card__selected-mark.app-icon {
+  width: 0.85em;
+  height: 0.85em;
+  color: #38bdf8;
+}
+
+.arrival-analytics__tier-group-icon.app-icon {
+  width: 0.85em;
+  height: 0.85em;
+}
+
+.match-queue-card__remove-btn .app-icon,
+.active-match-card__cancel-btn .app-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.match-queue-card__announce-btn .app-icon,
+.active-match-card__announce-btn .app-icon,
+.match-queue-card__play-btn .app-icon {
+  width: 0.95em;
+  height: 0.95em;
+}

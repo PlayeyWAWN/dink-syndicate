@@ -1,0 +1,144 @@
+/**
+ * Player registration modal.
+ */
+
+.player-reg-modal {
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  max-width: min(520px, 92vw);
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.player-reg-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.player-reg-modal__form {
+  padding: 1.25rem;
+  background: var(--bg-primary);
+  color: var(--text-on-surface);
+}
+
+.player-reg-modal__title {
+  margin: 0 0 1rem;
+  color: var(--accent);
+}
+
+.player-reg-modal__tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.player-reg-modal__tab {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--btn-secondary-bg);
+  color: var(--text-on-surface);
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.player-reg-modal__tab--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.player-reg-panel--hidden {
+  display: none !important;
+}
+
+.player-reg-modal__name-area {
+  display: block;
+  margin-bottom: 0.85rem;
+}
+
+.player-reg-modal__name-area .player-reg-panel {
+  width: 100%;
+}
+
+.player-reg-modal__name-area .player-reg-panel[hidden] {
+  display: none !important;
+}
+
+.player-reg-modal__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.player-reg-modal__field {
+  margin-bottom: 0.85rem;
+}
+
+.player-reg-modal__input,
+.player-reg-modal__textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+}
+
+.player-reg-modal__textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.reg-gender-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.reg-gender-picker__btn {
+  padding: 0.65rem 0.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--surface-border);
+  background: var(--btn-secondary-bg);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reg-gender-picker__btn--active.reg-gender-picker__btn--male {
+  background: var(--avatar-male, var(--gender-male-bg));
+  color: var(--gender-toggle-active-text);
+  border-color: var(--gender-male-accent);
+}
+
+.reg-gender-picker__btn--active.reg-gender-picker__btn--female {
+  background: var(--avatar-female, var(--gender-female-bg));
+  color: var(--gender-toggle-active-text);
+  border-color: var(--gender-female-accent);
+}
+
+.reg-skill-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.reg-skill-preview__rating {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.player-reg-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}

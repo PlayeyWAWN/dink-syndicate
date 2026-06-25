@@ -1,0 +1,13 @@
+/**
+ * CSS barrel — import order matters (shell → features).
+ */
+@import './themes.css';
+@import './components/app-icons.css';
+@import './shell/layout.css';
+@import './features/players.css';
+@import './features/players-registration.css';
+@import './features/queue.css';
+@import './features/queue-dialog.css';
+@import './features/match-board.css';
+@import './features/courts.css';
+@import './features/stats.css';

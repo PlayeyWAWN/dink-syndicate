@@ -1,0 +1,159 @@
+/**
+ * Courts tab — court cards and add-court modal.
+ */
+
+.court-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.court-card {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid var(--surface-border);
+  text-align: center;
+  color: var(--text-on-surface);
+}
+
+.court-card__header {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.court-card__name-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.court-card__name-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.court-card__delete-btn {
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+.court-card__delete-btn .app-icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.court-card__svg {
+  margin: 0.35rem 0 0.5rem;
+}
+
+.court-card__svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 130px;
+  margin: 0 auto;
+}
+
+.court-card__match-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.court-card__open {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0.35rem 0 0;
+}
+
+.court-card__status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0.35rem 0 0;
+}
+
+.court-card__status--open {
+  color: var(--btn-success-bg, #38bdf8);
+}
+
+.court-card__status--busy {
+  color: var(--text-muted);
+}
+
+.court-add-modal {
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  max-width: min(420px, 92vw);
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.court-add-modal::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.court-add-modal__form {
+  padding: 1.25rem;
+  background: var(--bg-primary);
+  color: var(--text-on-surface);
+}
+
+.court-add-modal__title {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.court-add-modal__label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.court-add-modal__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.court-add-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.court-card__team {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0.15rem 0;
+}
+
+.court-card__win-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}

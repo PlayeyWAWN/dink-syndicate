@@ -1,0 +1,549 @@
+/**
+ * Players tab — roster, filters, registration.
+ */
+
+/* Player form + registration inputs */
+.player-form input,
+.player-card__rating {
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+}
+
+.player-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.player-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.player-form__field--name,
+.player-form__field--gender,
+.player-form__field--rating,
+.player-form__field--help {
+  flex: 0 0 auto;
+}
+
+.player-form__name,
+.player-form__rating {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.player-form__submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.player-form__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-on-surface);
+}
+
+.gender-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.gender-toggle__btn {
+  flex: 1;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: var(--pill-bg);
+  color: var(--text-on-surface);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.gender-toggle__btn--male.gender-toggle__btn--active {
+  background: var(--gender-male-bg);
+  border-color: var(--gender-male-accent);
+  color: var(--gender-toggle-active-text);
+}
+
+.gender-toggle__btn--female.gender-toggle__btn--active {
+  background: var(--gender-female-bg);
+  border-color: var(--gender-female-accent);
+  color: var(--gender-toggle-active-text);
+}
+
+.dupr-help {
+  margin-top: 0.25rem;
+  border-radius: 8px;
+  background: var(--dupr-help-bg);
+  color: var(--dupr-help-text);
+  overflow: hidden;
+}
+
+.dupr-help__summary {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  color: var(--dupr-help-summary);
+}
+
+.dupr-help__summary::-webkit-details-marker {
+  display: none;
+}
+
+.dupr-help__body {
+  padding: 0 0.75rem 0.75rem;
+}
+
+.dupr-help__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.dupr-help__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.dupr-help__item {
+  margin-bottom: 0.35rem;
+}
+
+.dupr-help__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  color: var(--dupr-help-note);
+  line-height: 1.4;
+}
+
+.player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* —— Players tab (Smash Syndicate roster layout) —— */
+.players-section-label {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--list-title-color, var(--text-on-surface));
+}
+
+.players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.players-list .player-roster-card {
+  margin-bottom: 0;
+  padding: 1rem 1.1rem;
+  overflow: visible;
+}
+
+.players-list .player-roster-card--excluded {
+  border-left: 4px solid var(--roster-excluded-border);
+  background: var(--roster-excluded-bg);
+}
+
+.players-list .player-roster-card--out {
+  border-left: 4px solid var(--roster-out-border);
+  background: var(--roster-out-bg);
+  opacity: 0.92;
+}
+
+.players-list .list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0;
+}
+
+.players-list .avatar--roster {
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.players-list .avatar--roster.male {
+  background: var(--avatar-male, var(--gender-male-bg, #0175c2));
+}
+
+.players-list .avatar--roster.female {
+  background: var(--avatar-female, var(--gender-female-bg, #e91e63));
+}
+
+.players-list .list-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.players-list .list-title {
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  margin-bottom: 0.35rem;
+  color: var(--list-title-color, var(--text-on-surface));
+  text-shadow: var(--list-title-shadow, none);
+  word-break: break-word;
+}
+
+.players-list .list-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  color: var(--list-subtitle-color, var(--text-muted));
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  margin-bottom: 0.25rem;
+  text-shadow: var(--list-subtitle-shadow, none);
+}
+
+.players-list .list-subtitle__dot {
+  opacity: 0.55;
+}
+
+.players-list .list-subtitle__dupr {
+  font-weight: 700;
+}
+
+.players-list .list-meta {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.players-list .player-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.players-list .player-status-badge--excluded {
+  background: var(--status-excluded-bg);
+  color: var(--status-excluded-text);
+}
+
+.players-list .player-status-badge--out {
+  background: var(--status-out-bg);
+  color: var(--status-out-text);
+}
+
+.players-list .player-actions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.players-list .player-action-btn {
+  min-width: 2.875rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 14px;
+  border: 2px solid var(--player-action-border, #0f172a);
+  background: var(--player-action-bg, #ffffff);
+  color: var(--player-action-text, #0f172a);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    var(--player-action-shadow),
+    var(--player-action-inset);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.players-list .player-action-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  flex-shrink: 0;
+}
+
+.players-list .player-action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--player-action-shadow-hover),
+    var(--player-action-inset);
+}
+
+.players-list .player-action-btn--delete {
+  border-color: rgba(155, 34, 38, 0.45);
+}
+
+.players-search__input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border-radius: 12px;
+}
+
+@media (min-width: 768px) {
+  .players-list .player-roster-card {
+    padding: 1.1rem 1.25rem;
+  }
+
+  .players-list .avatar--roster {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.65rem;
+  }
+
+  .players-list .list-title {
+    font-size: 1.2rem;
+  }
+
+  .players-list .list-subtitle {
+    font-size: 1rem;
+  }
+
+  .players-list .player-action-btn {
+    min-width: 3rem;
+    height: 2.65rem;
+  }
+
+  .players-list .player-action-btn svg {
+    width: 1.35rem;
+    height: 1.35rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .players-list .list-item {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .players-list .player-actions {
+    flex-basis: 100%;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    margin-top: 0.35rem;
+    border-top: 1px solid var(--player-actions-divider);
+  }
+
+  .players-list .player-action-btn {
+    width: 100%;
+    min-width: 0;
+    height: 2.75rem;
+  }
+}
+
+.btn-success {
+  background: var(--btn-success-bg);
+  color: var(--btn-success-text);
+}
+
+.btn-success:hover {
+  background: var(--btn-success-hover);
+}
+
+.players-header-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.players-exclusion-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  background: var(--exclusion-bar-bg);
+  color: var(--exclusion-bar-text);
+  box-shadow: var(--exclusion-bar-shadow);
+  border: 1px solid var(--surface-border);
+}
+
+.players-exclusion-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.players-exclusion-bar__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.players-exclusion-bar .btn-small {
+  background: var(--exclusion-bar-btn-bg);
+  border: 1px solid var(--exclusion-bar-btn-border);
+  color: var(--exclusion-bar-btn-text);
+}
+
+.players-summary__header,
+.players-summary__stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.players-summary__header {
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.players-summary h3 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.players-summary__badge {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--summary-badge-bg);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.players-summary__stats {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.players-sort__title,
+.players-search__title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.players-sort__row,
+.players-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.players-sort__label,
+.players-filter-row__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-on-surface);
+}
+
+.players-sort__select,
+.players-search__input {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-family: inherit;
+}
+
+.players-sort__desc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--text-on-surface);
+}
+
+.players-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--pill-bg);
+  color: var(--text-on-surface);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.players-filter-btn--active {
+  background: var(--pill-active-bg);
+  border-color: var(--pill-border);
+  color: var(--pill-active-text);
+}
+
+.players-list .list-subtitle .skill-badge {
+  font-size: 0.8125rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.skill-badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.skill-badge--beginner {
+  background: #4caf50;
+  color: #fff;
+}
+
+.skill-badge--intermediate {
+  background: #ff9800;
+  color: #fff;
+}
+
+.skill-badge--advanced {
+  background: #f44336;
+  color: #fff;
+}
+
+.skill-badge--expert {
+  background: #673ab7;
+  color: #fff;
+}

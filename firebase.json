@@ -1,0 +1,23 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "authorizedDomains": [
+      "localhost",
+      "dinksyndicate.com",
+      "www.dinksyndicate.com",
+      "dink-syndicate.firebaseapp.com"
+    ],
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Dink Syndicate",
+        "supportEmail": "benedictramosgarcia@gmail.com"
+      }
+    }
+  }
+}

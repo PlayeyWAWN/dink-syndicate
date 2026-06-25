@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Dink Syndicate — offline-first pickleball queue manager">
+
+  <meta name="theme-color" content="#1E293B">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dink Syndicate">
+
+  <title>Dink Syndicate</title>
+  <meta name="app-version" content="0.2.0">
+
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('dinksyndicate_theme');
+        if (t === 'default') document.documentElement.dataset.theme = 'default';
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
+
+  <script>
+    (function () {
+      'use strict';
+      var meta = document.querySelector('meta[name="app-version"]');
+      var VERSION = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : null;
+      var stored = localStorage.getItem('dinksyndicate_app_version');
+      var RECOVERY = 'dinksyndicate_html_recovery_v1';
+
+      if (!meta || !VERSION) {
+        if (!sessionStorage.getItem(RECOVERY)) {
+          sessionStorage.setItem(RECOVERY, '1');
+          var url = new URL(window.location.href);
+          url.searchParams.set('_sw_bypass', String(Date.now()));
+          window.location.replace(url.toString());
+        }
+        return;
+      }
+
+      if (stored == null || stored === '') {
+        localStorage.setItem('dinksyndicate_app_version', VERSION);
+        return;
+      }
+
+      if (stored !== VERSION) {
+        localStorage.setItem('dinksyndicate_app_version', VERSION);
+      }
+    })();
+  </script>
+
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
