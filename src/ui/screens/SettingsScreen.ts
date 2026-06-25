@@ -24,6 +24,7 @@ import { renderSettingsCollapsibleSection } from '@/ui/components/SettingsCollap
 import { renderTtsSettingsPanel } from '@/ui/components/TtsSettingsPanel';
 import { reloadAllStores } from '@/modules/session/DataManagementService';
 import { renderAppInformationPanel } from '@/ui/components/AppInformationPanel';
+import { renderAccountSettingsPanel } from '@/ui/components/AccountSettingsPanel';
 import { renderDataManagementPanel } from '@/ui/components/DataManagementPanel';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
 
@@ -505,6 +506,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
   );
 
   container.append(
+    renderAccountSettingsPanel(),
     orgSection,
     sessionSection,
     renderTtsSettingsPanel(),

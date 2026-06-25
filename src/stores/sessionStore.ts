@@ -21,6 +21,10 @@ interface SessionStoreState {
   session: Session | null;
   hydrated: boolean;
   init: () => Promise<void>;
+  /** Activate a signed-in session (Firebase auth or after local sign-in). */
+  activateSession: (session: Session) => Promise<void>;
+  /** Clear session on sign-out (Firebase). */
+  clearSession: () => void;
   setOrganizerName: (name: string) => void;
   updateSessionSettings: (partial: Partial<AppSettings>) => void;
   persistSnapshot: (partial: {
@@ -72,19 +76,15 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   hydrated: false,
 
   init: async () => {
+    if (isFirebaseEnabled()) return;
+
     const auth = getAuthService();
-    let session = auth.getSession();
+    const session = await auth.signIn();
+    await get().activateSession(session);
+  },
 
-    if (!session && !isFirebaseEnabled()) {
-      session = await auth.signIn();
-    }
-
-    if (session) {
-      setActiveStorageUid(session.id);
-    } else {
-      set({ session: null, hydrated: true });
-      return;
-    }
+  activateSession: async (session: Session) => {
+    setActiveStorageUid(session.id);
 
     const existingRaw = readEnhancedData<Record<string, unknown>>(session.id);
     if (!existingRaw) {
@@ -99,6 +99,11 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     }
 
     set({ session, hydrated: true });
+  },
+
+  clearSession: () => {
+    setActiveStorageUid(null);
+    set({ session: null, hydrated: false });
   },
 
   setOrganizerName: (name) => {

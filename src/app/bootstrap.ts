@@ -1,4 +1,6 @@
+import { runFirebaseAuthGate } from '@/app/auth-gate';
 import { appRouter, AppRoute } from '@/app/router';
+import { isFirebaseEnabled } from '@/config/firebase';
 import { AppShell, mountAppShell, setActiveShellRoute } from '@/ui/shell/app-shell';
 import { isOnline, onConnectivityChange } from '@/lib/offline-utils';
 import { useCourtStore } from '@/stores/courtStore';
@@ -66,13 +68,17 @@ function updateConnectivityBadge(): void {
 
 /** Initialize stores, hydrate from localStorage, mount Smash-style shell. */
 export async function bootstrapApp(): Promise<void> {
+  appRouter.subscribe(() => renderApp());
+  onConnectivityChange(() => updateConnectivityBadge());
+
+  if (isFirebaseEnabled()) {
+    await runFirebaseAuthGate(() => renderApp());
+    return;
+  }
+
   await useSessionStore.getState().init();
   usePlayerStore.getState().hydrate();
   useCourtStore.getState().hydrate();
   useQueueStore.getState().hydrate();
-
-  appRouter.subscribe(() => renderApp());
-  onConnectivityChange(() => updateConnectivityBadge());
-
   renderApp();
 }

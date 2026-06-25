@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { DEFAULT_ORGANIZER_NAME } from '@/config/constants';
@@ -68,15 +69,22 @@ export class FirebaseAuthService implements AuthProvider {
     return session;
   }
 
-  async registerWithEmail(email: string, password: string): Promise<Session> {
+  async registerWithEmail(email: string, password: string, displayName?: string): Promise<Session> {
     const auth = getFirebaseAuth();
     if (!auth) throw new Error('Firebase Auth is not configured');
 
     const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    const trimmedName = displayName?.trim();
+    if (trimmedName) {
+      await updateProfile(result.user, { displayName: trimmedName });
+    }
     const session = userToSession(result.user);
-    this.session = session;
-    this.emit(session);
-    return session;
+    this.session = SessionSchema.parse({
+      ...session,
+      organizerName: trimmedName || session.organizerName,
+    });
+    this.emit(this.session);
+    return this.session;
   }
 
   async signOut(): Promise<void> {
