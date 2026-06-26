@@ -30,13 +30,31 @@ function renderStackColumn(
     className: `win-lose-stack__column${isNextUp ? ' win-lose-stack__column--next-up' : ''}`,
   });
 
+  const dueCount = isNextUp
+    ? Math.min(playerIds.length, WIN_LOSE_STACK_PLAYERS)
+    : 0;
+
   const header = el('div', { className: 'win-lose-stack__column-header' }, [
     el('h3', { className: 'win-lose-stack__column-title' }, [title]),
     isNextUp
-      ? el('span', { className: 'win-lose-stack__next-badge' }, ['Next up'])
+      ? el('span', { className: 'win-lose-stack__next-badge' }, [
+          dueCount >= WIN_LOSE_STACK_PLAYERS
+            ? `Next game · top ${WIN_LOSE_STACK_PLAYERS}`
+            : `Next game · ${dueCount}/${WIN_LOSE_STACK_PLAYERS}`,
+        ])
       : el('span', { className: 'win-lose-stack__count' }, [String(playerIds.length)]),
   ]);
   column.append(header);
+
+  if (isNextUp && dueCount > 0) {
+    column.append(
+      el('p', { className: 'win-lose-stack__due-hint' }, [
+        dueCount >= WIN_LOSE_STACK_PLAYERS
+          ? 'Highlighted players are due on court next.'
+          : `Need ${WIN_LOSE_STACK_PLAYERS - dueCount} more in this stack before the next game can start.`,
+      ])
+    );
+  }
 
   const list = el('ol', { className: 'win-lose-stack__list' });
   if (playerIds.length === 0) {
@@ -44,8 +62,11 @@ function renderStackColumn(
   } else {
     playerIds.forEach((playerId, index) => {
       const name = players.find((player) => player.id === playerId)?.name ?? 'Unknown';
+      const isDue = isNextUp && index < dueCount;
       list.append(
-        el('li', { className: 'win-lose-stack__item' }, [
+        el('li', {
+          className: `win-lose-stack__item${isDue ? ' win-lose-stack__item--due' : ''}`,
+        }, [
           el('span', { className: 'win-lose-stack__position' }, [String(index + 1)]),
           el('span', { className: 'win-lose-stack__name' }, [name]),
         ])
@@ -71,10 +92,6 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       el('span', { className: 'queue-section__count' }, [
         String(stack.winnerStack.length + stack.loserStack.length),
       ]),
-    ]),
-    el('p', { className: 'screen-lead queue-section__lead' }, [
-      'Two waiting piles: first 4 check-ins start in Winners, the rest in Losers (waiting — not game losers yet). ',
-      'After each game, actual winners and losers return to the back of their pile. Next-Up alternates between piles.',
     ])
   );
 

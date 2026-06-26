@@ -53,6 +53,10 @@ export const AppSettingsSchema = z.object({
     .enum(['dupr_open_play', 'win_lose_stack', 'ladder_waterfall'])
     .default(DEFAULT_GAME_MODE)
     .optional(),
+  /** Queue tab default court format for Create Match. */
+  courtFormat: z.enum(['doubles', 'singles']).default('doubles').optional(),
+  /** Queue tab default match mode for Create Match (doubles only). */
+  matchMode: z.enum(['balanced', 'mixed_doubles', 'same_gender']).default('balanced').optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -153,6 +157,8 @@ export function mergeAppSettings(
       MATCHMAKING_FAIRNESS.defaultAvailableWaitCriticalMinutes,
     ttsVoiceUri: partial?.ttsVoiceUri ?? current?.ttsVoiceUri,
     gameMode: partial?.gameMode ?? current?.gameMode ?? DEFAULT_GAME_MODE,
+    courtFormat: partial?.courtFormat ?? current?.courtFormat ?? 'doubles',
+    matchMode: partial?.matchMode ?? current?.matchMode ?? 'balanced',
   };
 }
 

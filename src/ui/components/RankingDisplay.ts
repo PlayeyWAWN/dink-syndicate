@@ -19,7 +19,7 @@ export function createStatsScopeBadge(
   return el('span', { className }, [statsViewLabel(statsView)]);
 }
 
-/** Single-line player cell: trophy + rank + name + podium badge (top 3 only). */
+/** Single-line player cell: trophy + rank + name (+ podium badge in PNG export only). */
 export function createRankingPlayerCell(
   name: string,
   rankIndex: number,
@@ -42,10 +42,10 @@ export function createRankingPlayerCell(
 
   inline.append(
     el('span', { className: `${prefix}__player-rank` }, [String(rankNumber)]),
-    el('span', { className: `${prefix}__player-name` }, [name])
+    el('span', { className: `${prefix}__player-name`, title: name }, [name])
   );
 
-  if (podium) {
+  if (podium && variant === 'export') {
     const label = el('span', {
       className: `${prefix}__podium-label ${prefix}__podium-label--${podium}`,
     });

@@ -96,12 +96,12 @@ export function renderRankingsTablePanel(options: RankingsTablePanelOptions): HT
   const thead = el('thead');
   thead.append(
     el('tr', {}, [
-      el('th', {}, ['Player']),
-      el('th', {}, ['Pts']),
-      el('th', {}, ['Games']),
-      el('th', {}, ['W-L']),
-      el('th', {}, ['Win %']),
-      el('th', {}, ['Rating']),
+      el('th', { className: 'stats-table__col-player' }, ['Player']),
+      el('th', { className: 'stats-table__col-stat', title: 'Points' }, ['Pts']),
+      el('th', { className: 'stats-table__col-stat', title: 'Games played' }, ['G']),
+      el('th', { className: 'stats-table__col-stat', title: 'Wins and losses' }, ['W-L']),
+      el('th', { className: 'stats-table__col-stat', title: 'Win percentage' }, ['%']),
+      el('th', { className: 'stats-table__col-stat', title: 'DUPR rating' }, ['DUPR']),
     ])
   );
   const tbody = el('tbody');

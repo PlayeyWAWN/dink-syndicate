@@ -1,4 +1,8 @@
-import { AppData, migrateAppData } from '@/types/app-data';
+import { AppData, mergeAppSettings, migrateAppData } from '@/types/app-data';
+import {
+  buildSessionSettingsSummary,
+  SessionSettingsSummary,
+} from '@/modules/session/session-settings-export';
 
 export const SESSION_TRANSFER_FORMAT = 'dink-syndicate-session-transfer';
 export const SESSION_TRANSFER_VERSION = 1;
@@ -8,15 +12,22 @@ export interface SessionTransferEnvelope {
   format: typeof SESSION_TRANSFER_FORMAT;
   version: number;
   exportedAt: string;
+  /** Human-readable snapshot of saved session settings (also stored in data.settings). */
+  settingsSummary: SessionSettingsSummary;
   data: AppData;
 }
 
 export function buildExportEnvelope(data: AppData): SessionTransferEnvelope {
+  const migrated = migrateAppData(data);
+  const settings = mergeAppSettings(migrated.settings, migrated.session.organizerName);
+  const dataWithSettings: AppData = { ...migrated, settings };
+
   return {
     format: SESSION_TRANSFER_FORMAT,
     version: SESSION_TRANSFER_VERSION,
     exportedAt: new Date().toISOString(),
-    data: migrateAppData(data),
+    settingsSummary: buildSessionSettingsSummary(settings, migrated.queueState),
+    data: dataWithSettings,
   };
 }
 
