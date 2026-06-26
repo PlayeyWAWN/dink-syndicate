@@ -8,10 +8,14 @@ import { useQueueStore } from '@/stores/queueStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { defaultArchiveName } from '@/types/session-archive';
 
-function clearSessionRuntimeState(): void {
-  useQueueStore.getState().clearSessionQueue();
+function clearSessionRuntimeState(forNewSession = false): void {
   useCourtStore.getState().clearAllActiveMatches();
   usePlayerStore.getState().resetSessionPlayerStats();
+  if (forNewSession) {
+    useQueueStore.getState().prepareQueueForNewSession();
+  } else {
+    useQueueStore.getState().clearSessionQueue();
+  }
 }
 
 /** Saves current session stats to history without starting a new session. */
@@ -41,7 +45,7 @@ export function startNewSession(options: StartNewSessionOptions = {}): void {
     useSessionStore.getState().appendSessionArchive(archive);
   }
 
-  clearSessionRuntimeState();
+  clearSessionRuntimeState(true);
   useSessionStore.getState().updateSessionSettings({ sessionStartTime: Date.now() });
 }
 

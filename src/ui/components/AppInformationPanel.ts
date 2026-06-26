@@ -17,17 +17,42 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How do I run a club session?',
     answer:
-      'Add players on the Players tab (name, gender, DUPR rating), check them in, and set your court count on the Courts tab. Open Queue to create matches and send them to court when a slot opens.',
+      'Add players on the Players tab (name, gender, DUPR rating), check them in, and set your court count on the Courts tab. Choose a Game mode in Settings (DUPR Open Play, Win/Lose Stack, or Ladder/Waterfall), then open Queue to run matches.',
+  },
+  {
+    question: 'What are the game modes?',
+    answer:
+      'DUPR Open Play uses fairness-ranked Find Match plus manual lineups. Win/Lose Stack keeps separate Winners and Losers waiting piles with alternating Next-Up and partner shuffle. Ladder/Waterfall treats Court 1 as the top rung — winners move up and losers move down after each game.',
   },
   {
     question: 'How does Find Match work?',
     answer:
-      'On the Queue tab, choose court format (singles or doubles) and match mode (Balanced, Mix 1M+1F, or Same Gender), then tap Create Match. The app prioritizes players with fewer games played, then balances skill using DUPR ratings.',
+      'In DUPR Open Play mode, choose court format (singles or doubles) and match mode (Balanced, Mix 1M+1F, or Same Gender) on the Queue tab, then tap Create Match. The app prioritizes players with fewer games played, then balances skill using DUPR ratings.',
+  },
+  {
+    question: 'How does Win/Lose Stack work?',
+    answer:
+      'Check in at least four players and switch to Win/Lose Stack in Settings. Record winners on active matches — players auto-route to the Winners or Losers pile, and the next game starts when the Next-Up pile has four players. Partners shuffle each game.',
+  },
+  {
+    question: 'How does Ladder/Waterfall work?',
+    answer:
+      'Use at least two courts and check in players (seeded by DUPR onto Court 1 first). Record winners after each doubles game — winners move up one court, losers move down, and partners split on the next lineup. Extra players wait in the pool until a bench slot opens; the pool is ordered by fewest games played, with an Up next badge on the next four due in.',
+  },
+  {
+    question: 'What is Auto-rotation?',
+    answer:
+      'In Win/Lose Stack and Ladder/Waterfall modes, Auto-rotation is off by default. Tap Auto-rotation on the Queue tab when you want the app to handle everything: routing players after each game, filling benches from the waiting pool (fewest games played first), and starting courts when four players are ready. Turn it off again to assign lineups manually.',
+  },
+  {
+    question: 'How do I end a Win/Lose Stack or Ladder session?',
+    answer:
+      'Turn off Auto-rotation on the Queue tab if it is on, so new games are not dealt automatically. Finish or cancel any active matches, then go to Settings → End session & archive. Only completed games count toward session stats and rankings — active matches cleared at end do not affect points.',
   },
   {
     question: 'Can I build matches manually?',
     answer:
-      'Yes. Tap available players in the queue list to select them (2 for singles, 4 for doubles), then tap Build manual match. You can swap or replace players on queued matches by tapping their names.',
+      'Yes, in DUPR Open Play mode. Tap available players in the queue list to select them (2 for singles, 4 for doubles), then tap Build manual match. You can swap or replace players on queued matches by tapping their names.',
   },
   {
     question: 'What if all courts are occupied?',

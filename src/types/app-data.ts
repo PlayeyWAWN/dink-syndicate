@@ -1,13 +1,14 @@
 import { z } from 'zod';
-import { DEFAULT_COURT_COUNT } from '@/config/constants';
+import { DEFAULT_COURT_COUNT, DEFAULT_ORGANIZER_NAME } from '@/config/constants';
 import { PlayerSchema, PlayerStats } from '@/types/player';
 import { CourtSchema } from '@/types/court';
 import { QueueStateSchema } from '@/types/queue';
 import { SessionSchema } from '@/types/session';
 import { SessionArchiveSchema } from '@/types/session-archive';
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
+import { DEFAULT_GAME_MODE } from '@/types/game-mode';
 
-export const APP_DATA_VERSION = 2;
+export const APP_DATA_VERSION = 3;
 
 export const AppSettingsSchema = z.object({
   courtCount: z.number().int().min(0).max(24).default(DEFAULT_COURT_COUNT),
@@ -47,6 +48,11 @@ export const AppSettingsSchema = z.object({
     .optional(),
   /** speechSynthesis voiceURI for queue announcements. */
   ttsVoiceUri: z.string().optional(),
+  /** Session rotation system — DUPR open play, Win/Lose Stack, or Ladder/Waterfall. */
+  gameMode: z
+    .enum(['dupr_open_play', 'win_lose_stack', 'ladder_waterfall'])
+    .default(DEFAULT_GAME_MODE)
+    .optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -86,16 +92,30 @@ export function migrateAppData(raw: unknown): AppData {
   const version = typeof record.version === 'number' ? record.version : 1;
   let next: Record<string, unknown> = { ...record };
 
-  if (version < APP_DATA_VERSION) {
+  if (version < 2) {
     const players = Array.isArray(record.players)
       ? (record.players as Record<string, unknown>[]).map(migratePlayerRecord)
       : [];
 
     next = {
       ...next,
-      version: APP_DATA_VERSION,
+      version: 2,
       players,
       sessionArchives: record.sessionArchives ?? [],
+    };
+  }
+
+  if (version < 3) {
+    const sessionRecord = next.session as { organizerName?: string } | undefined;
+    const currentSettings = next.settings as AppSettings | undefined;
+    next = {
+      ...next,
+      version: 3,
+      settings: mergeAppSettings(
+        currentSettings,
+        sessionRecord?.organizerName ?? DEFAULT_ORGANIZER_NAME,
+        { gameMode: currentSettings?.gameMode ?? DEFAULT_GAME_MODE }
+      ),
     };
   }
 
@@ -132,6 +152,7 @@ export function mergeAppSettings(
       current?.availableWaitCriticalMinutes ??
       MATCHMAKING_FAIRNESS.defaultAvailableWaitCriticalMinutes,
     ttsVoiceUri: partial?.ttsVoiceUri ?? current?.ttsVoiceUri,
+    gameMode: partial?.gameMode ?? current?.gameMode ?? DEFAULT_GAME_MODE,
   };
 }
 

@@ -1,0 +1,37 @@
+/* —— Ladder / Waterfall notices + status —— */
+
+.ladder-waterfall__status {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.ladder-waterfall__status--blocked {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-left: 3px solid #fbbf24;
+}
+
+.ladder-waterfall__status--manual {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid #60a5fa;
+}
+
+.ladder-waterfall__notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.notice-banner--ladder {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.ladder-waterfall__notice-dismiss {
+  flex-shrink: 0;
+}

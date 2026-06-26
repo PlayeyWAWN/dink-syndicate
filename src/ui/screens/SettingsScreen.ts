@@ -1,5 +1,8 @@
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
-import { TEST_ROSTER_SIZE } from '@/modules/players/generateTestRoster';
+import {
+  TEST_ROSTER_COUNT_OPTIONS,
+  TEST_ROSTER_SIZE,
+} from '@/modules/players/generateTestRoster';
 import { el } from '@/lib/dom-utils';
 import { computeLateMinutesForCheckIn } from '@/lib/session-settings-utils';
 import { startNewSession, endSessionAndArchive, hasSessionActivity } from '@/modules/session/SessionLifecycleService';
@@ -15,10 +18,12 @@ import {
   parseRosterImportJson,
   serializeRosterExport,
 } from '@/modules/session/RosterTransferService';
-import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { isAutoRotationEnabled } from '@/types/queue';
 import { useSessionStore } from '@/stores/sessionStore';
+import { getGameMode } from '@/modules/game-mode/getGameMode';
+import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 import { appRouter } from '@/app/router';
 import { renderSettingsCollapsibleSection } from '@/ui/components/SettingsCollapsibleSection';
 import { renderTtsSettingsPanel } from '@/ui/components/TtsSettingsPanel';
@@ -26,6 +31,7 @@ import { reloadAllStores } from '@/modules/session/DataManagementService';
 import { renderAppInformationPanel } from '@/ui/components/AppInformationPanel';
 import { renderAccountSettingsPanel } from '@/ui/components/AccountSettingsPanel';
 import { renderDataManagementPanel } from '@/ui/components/DataManagementPanel';
+import { renderGameModeSettingsSection } from '@/ui/components/GameModeSettingsPanel';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
 
 function reloadStoresAfterSessionChange(): void {
@@ -100,6 +106,8 @@ export function renderSettingsScreen(container: HTMLElement): void {
     open: settingsUi.organizerSectionOpen,
     onToggle: (open) => useSettingsUiStore.getState().setOrganizerSectionOpen(open),
   });
+
+  const gameModeSection = renderGameModeSettingsSection();
 
   const startField = el('div', { className: 'player-form__field' });
   startField.append(el('label', { className: 'player-form__label', for: 'session-start-time' }, [
@@ -282,12 +290,32 @@ export function renderSettingsScreen(container: HTMLElement): void {
     const defaultName = defaultArchiveName();
     const name = window.prompt('Archive name for this session:', defaultName);
     if (name === null) return;
+
+    const gameMode = getGameMode(current.settings);
+    const rotationMode = isWinLoseStackMode(gameMode) || isLadderWaterfallMode(gameMode);
+    const queueState = useQueueStore.getState().queueState;
+    const autoRotationOn = isAutoRotationEnabled(queueState);
+    const activeCount = queueState.activeMatches.length;
+
+    let rotationNote = '';
+    if (rotationMode) {
+      if (autoRotationOn) {
+        rotationNote =
+          '• Turn off Auto-rotation on the Queue tab first so no new games start while you wrap up.\n';
+      }
+      if (activeCount > 0) {
+        rotationNote +=
+          `• ${activeCount} active match${activeCount === 1 ? '' : 'es'} will be cleared — only completed games are archived.\n`;
+      }
+    }
+
     const confirmed = window.confirm(
       `End session and save "${name.trim() || defaultName}"?\n\n` +
         '• Archives session stats for all players\n' +
         '• Clears queue, courts, and session win/loss counts\n' +
-        '• Career totals are preserved\n\n' +
-        'Session start time is not changed.'
+        '• Career totals are preserved\n' +
+        rotationNote +
+        '\nSession start time is not changed.'
     );
     if (!confirmed) return;
     endSessionAndArchive(name);
@@ -407,19 +435,35 @@ export function renderSettingsScreen(container: HTMLElement): void {
   const testRosterHeading = el('h4', { className: 'players-section-label' }, [
     'Matchmaking test roster',
   ]);
+  const testRosterCountSelect = el('select', {
+    id: 'test-roster-count',
+    className: 'settings-input test-roster-count__select',
+    'aria-label': 'Number of test players to load',
+  }) as HTMLSelectElement;
+  for (const count of TEST_ROSTER_COUNT_OPTIONS) {
+    const option = el('option', { value: String(count) }, [
+      `${count} players`,
+    ]) as HTMLOptionElement;
+    if (count === TEST_ROSTER_SIZE) option.selected = true;
+    testRosterCountSelect.append(option);
+  }
+
   const loadTestRosterBtn = el('button', { type: 'button', className: 'btn btn-secondary' }, [
-    `Load ${TEST_ROSTER_SIZE} test players`,
+    'Load test players',
   ]);
   loadTestRosterBtn.addEventListener('click', () => {
+    const count = Number(testRosterCountSelect.value);
     const confirmed = window.confirm(
-      `Add ${TEST_ROSTER_SIZE} dummy players for matchmaking tests?\n\n` +
-        '• Names: "Test Player 001" … "Test Player 125"\n' +
+      `Add ${count} dummy players for matchmaking tests?\n\n` +
+        '• Realistic names with a balanced male/female mix\n' +
         '• DUPR spread: ~2.0 beginner through ~5.2 expert\n' +
-        '• Alternating male / female, all checked in\n\n' +
+        '• All checked in and ready to queue\n\n' +
         'Existing players are kept. Names already in use are skipped.'
     );
     if (!confirmed) return;
-    const { added, skipped } = usePlayerStore.getState().loadTestRoster({ checkIn: true });
+    const { added, skipped } = usePlayerStore
+      .getState()
+      .loadTestRoster({ checkIn: true, count });
     reloadStoresAfterSessionChange();
     alert(
       `Added ${added} test player${added === 1 ? '' : 's'}` +
@@ -429,8 +473,8 @@ export function renderSettingsScreen(container: HTMLElement): void {
     appRouter.navigate('queue');
   });
 
-  const testRosterActions = el('div', { className: 'action-row' });
-  testRosterActions.append(loadTestRosterBtn);
+  const testRosterActions = el('div', { className: 'action-row test-roster-count' });
+  testRosterActions.append(testRosterCountSelect, loadTestRosterBtn);
 
   const rosterActions = el('div', { className: 'action-row action-row--equal' });
   rosterActions.append(rosterExportBtn, rosterImportLabel);
@@ -491,7 +535,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
       ]),
       testRosterHeading,
       el('p', { className: 'screen-lead' }, [
-        `Load ${TEST_ROSTER_SIZE} checked-in dummy players with varied DUPR ratings to stress-test Find Match.`,
+        'Load checked-in test players with realistic names and varied DUPR ratings to stress-test matchmaking. Choose 8, 16, 24, 32, or 50 players.',
       ]),
       testRosterActions,
       rosterActions,
@@ -511,6 +555,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
   container.append(
     renderAccountSettingsPanel(),
     orgSection,
+    gameModeSection,
     sessionSection,
     renderTtsSettingsPanel(),
     transferSection,

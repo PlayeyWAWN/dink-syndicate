@@ -10,6 +10,7 @@ export interface MatchCourtBoardOptions {
   active?: boolean;
   label?: string;
   onPlayerChipClick?: (playerId: string) => void;
+  metaFormat?: 'games' | 'dupr';
 }
 
 const POSITIONS = [
@@ -20,13 +21,13 @@ const POSITIONS = [
 ];
 
 export function renderMatchCourtBoard(options: MatchCourtBoardOptions): HTMLElement {
-  const { playerIds, players, active = false, label = 'Pickleball court', onPlayerChipClick } =
+  const { playerIds, players, active = false, label = 'Pickleball court', onPlayerChipClick, metaFormat } =
     options;
   const { teamA, teamB } = splitTeams(playerIds);
 
   const board = el('div', { className: 'match-court-board' });
   const court = el('div', { className: 'match-court-board__court' });
-  mountPickleballCourt(court, { active, label, width: 400, height: 200 });
+  mountPickleballCourt(court, { active, label });
 
   for (const pos of POSITIONS) {
     const ids = pos.team === 'A' ? teamA : teamB;
@@ -41,6 +42,7 @@ export function renderMatchCourtBoard(options: MatchCourtBoardOptions): HTMLElem
           onPlayerChipClick && playerId
             ? () => onPlayerChipClick(playerId)
             : undefined,
+        metaFormat,
       })
     );
     court.append(wrap);

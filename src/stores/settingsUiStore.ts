@@ -4,6 +4,7 @@ interface SettingsUiState {
   accountSectionOpen: boolean;
   organizerSectionOpen: boolean;
   sessionSectionOpen: boolean;
+  gameModeSectionOpen: boolean;
   ttsSectionOpen: boolean;
   transferSectionOpen: boolean;
   appInfoSectionOpen: boolean;
@@ -11,6 +12,7 @@ interface SettingsUiState {
   setAccountSectionOpen: (open: boolean) => void;
   setOrganizerSectionOpen: (open: boolean) => void;
   setSessionSectionOpen: (open: boolean) => void;
+  setGameModeSectionOpen: (open: boolean) => void;
   setTtsSectionOpen: (open: boolean) => void;
   setTransferSectionOpen: (open: boolean) => void;
   setAppInfoSectionOpen: (open: boolean) => void;
@@ -21,6 +23,7 @@ export const useSettingsUiStore = create<SettingsUiState>((set) => ({
   accountSectionOpen: true,
   organizerSectionOpen: true,
   sessionSectionOpen: false,
+  gameModeSectionOpen: true,
   ttsSectionOpen: false,
   transferSectionOpen: false,
   appInfoSectionOpen: false,
@@ -28,6 +31,7 @@ export const useSettingsUiStore = create<SettingsUiState>((set) => ({
   setAccountSectionOpen: (accountSectionOpen) => set({ accountSectionOpen }),
   setOrganizerSectionOpen: (organizerSectionOpen) => set({ organizerSectionOpen }),
   setSessionSectionOpen: (sessionSectionOpen) => set({ sessionSectionOpen }),
+  setGameModeSectionOpen: (gameModeSectionOpen) => set({ gameModeSectionOpen }),
   setTtsSectionOpen: (ttsSectionOpen) => set({ ttsSectionOpen }),
   setTransferSectionOpen: (transferSectionOpen) => set({ transferSectionOpen }),
   setAppInfoSectionOpen: (appInfoSectionOpen) => set({ appInfoSectionOpen }),

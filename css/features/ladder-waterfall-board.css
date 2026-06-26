@@ -1,0 +1,477 @@
+/* —— Ladder / Waterfall unified board —— */
+
+.ladder-board {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .ladder-board {
+    grid-template-columns: minmax(0, 1fr) min(280px, 32%);
+    align-items: start;
+  }
+}
+
+.ladder-board__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.ladder-board__rungs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ladder-board__actions {
+  margin-top: 0.25rem;
+}
+
+/* Rules hero */
+.ladder-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--surface-border);
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.ladder-hero__rules {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.ladder-hero__rule {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.65rem 0.5rem;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.ladder-hero__rule--win {
+  background: rgba(45, 212, 191, 0.1);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+}
+
+.ladder-hero__rule--lose {
+  background: rgba(244, 114, 182, 0.1);
+  border: 1px solid rgba(244, 114, 182, 0.35);
+}
+
+.ladder-hero__rule-icon {
+  width: 2rem;
+  height: 2rem;
+  opacity: 0.9;
+}
+
+.ladder-hero__rule-icon .app-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.ladder-hero__rule-arrow {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ladder-hero__rule--win .ladder-hero__rule-arrow {
+  color: #2dd4bf;
+}
+
+.ladder-hero__rule--lose .ladder-hero__rule-arrow {
+  color: #f472b6;
+}
+
+.ladder-hero__rule-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ladder-hero__rotation {
+  margin: 0;
+}
+
+.ladder-hero__rotation .rotation-controls {
+  margin: 0;
+}
+
+@media (min-width: 720px) {
+  .ladder-hero {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .ladder-hero__rules {
+    flex: 1;
+  }
+
+  .ladder-hero__rotation {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Court rung cards */
+.ladder-rung {
+  border-radius: 0.75rem;
+  border: 1px solid var(--surface-border);
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.ladder-rung--gold {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.18), rgba(15, 23, 42, 0.35));
+  border-color: rgba(234, 179, 8, 0.45);
+}
+
+.ladder-rung--silver {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.16), rgba(15, 23, 42, 0.35));
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.ladder-rung--bronze {
+  background: linear-gradient(135deg, rgba(180, 83, 9, 0.16), rgba(15, 23, 42, 0.35));
+  border-color: rgba(180, 83, 9, 0.4);
+}
+
+.ladder-rung--ready {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.ladder-rung--active {
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+.ladder-rung__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem 0.45rem;
+}
+
+.ladder-rung__title-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ladder-rung__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.ladder-rung__badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.ladder-rung__badge--top {
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.18);
+}
+
+.ladder-rung__badge--bottom {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.ladder-rung__status-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.ladder-rung__status {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ladder-rung__status--live {
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.ladder-rung__status--ready {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.ladder-rung__status--manual {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.ladder-rung__timer {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.ladder-rung__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .ladder-rung__header-actions {
+    width: auto;
+  }
+}
+
+.ladder-rung__body {
+  padding: 0 0.75rem 0.75rem;
+}
+
+/* Compact court board inside rung — container and SVG must share the same box */
+.ladder-rung .match-court-board {
+  margin-bottom: 0.65rem;
+  display: flex;
+  justify-content: center;
+  padding: 0.35rem 0.25rem 0.45rem;
+}
+
+.ladder-rung .match-court-board__court {
+  width: 100%;
+  max-width: min(100%, 440px);
+  margin: 0 auto;
+  aspect-ratio: 520 / 280;
+  min-height: unset;
+}
+
+.ladder-rung .match-court-board__court svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.ladder-rung .match-court-board__pos {
+  width: min(80px, 23%);
+}
+
+.ladder-rung .match-court-board__pos .match-player-chip {
+  max-width: none;
+  width: 100%;
+  min-height: 3.35rem;
+  padding: 0.28rem 0.22rem 0.32rem;
+  font-size: 0.72rem;
+}
+
+.ladder-rung .match-court-board__pos .match-player-chip__icon {
+  font-size: 0.85rem;
+  margin-bottom: 0.1rem;
+}
+
+.ladder-rung .match-court-board__pos .match-player-chip__name {
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+
+.ladder-rung .match-court-board__pos .match-player-chip__meta {
+  font-size: 0.58rem;
+  margin-top: 0.1rem;
+}
+
+@media (min-width: 560px) {
+  .ladder-rung .match-court-board__court {
+    max-width: 480px;
+  }
+
+  .ladder-rung .match-court-board__pos {
+    width: min(92px, 21%);
+  }
+
+  .ladder-rung .match-court-board__pos .match-player-chip {
+    min-height: 3.6rem;
+  }
+}
+
+@media (max-width: 399px) {
+  .ladder-rung .match-court-board__court {
+    max-width: 100%;
+  }
+
+  .ladder-rung .match-court-board__pos {
+    width: min(68px, 27%);
+  }
+
+  .ladder-rung .match-court-board__pos--tl,
+  .ladder-rung .match-court-board__pos--bl {
+    left: 4%;
+  }
+
+  .ladder-rung .match-court-board__pos--tr,
+  .ladder-rung .match-court-board__pos--br {
+    right: 4%;
+  }
+
+  .ladder-rung .match-court-board__pos .match-player-chip {
+    min-height: 3rem;
+    padding: 0.22rem 0.18rem 0.26rem;
+  }
+
+  .ladder-rung .match-court-board__pos .match-player-chip__icon {
+    display: none;
+  }
+
+  .ladder-rung .match-court-board__pos .match-player-chip__name {
+    font-size: 0.62rem;
+  }
+
+  .ladder-rung .match-court-board__pos .match-player-chip__meta {
+    font-size: 0.52rem;
+  }
+}
+
+/* Bench waiting slots */
+.ladder-rung__bench-slots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+@media (min-width: 480px) {
+  .ladder-rung__bench-slots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ladder-rung__bench-slot {
+  min-height: 3.25rem;
+  padding: 0.35rem;
+  border-radius: 0.45rem;
+  border: 1px dashed rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.ladder-rung__bench-slot--filled {
+  border-style: solid;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.ladder-rung__bench-slot--assignable {
+  cursor: pointer;
+  border-color: rgba(45, 212, 191, 0.65);
+  background: rgba(45, 212, 191, 0.08);
+}
+
+.ladder-rung__bench-slot--assignable:hover,
+.ladder-rung__bench-slot--assignable:focus-visible {
+  border-color: #2dd4bf;
+  background: rgba(45, 212, 191, 0.14);
+  outline: none;
+}
+
+.ladder-rung__bench-slot--returnable {
+  cursor: pointer;
+}
+
+.ladder-rung__bench-slot--returnable:hover,
+.ladder-rung__bench-slot--returnable:focus-visible {
+  border-color: rgba(251, 191, 36, 0.55);
+  outline: none;
+}
+
+.ladder-rung__bench-slot-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #2dd4bf;
+}
+
+.ladder-rung__bench-slot .match-player-chip {
+  width: 100%;
+  font-size: 0.75rem;
+}
+
+.ladder-rung__bench-slot .match-player-chip__name {
+  font-size: 0.75rem;
+}
+
+.ladder-rung__bench-slot .match-player-chip__meta {
+  font-size: 0.65rem;
+}
+
+/* Movement preview + win buttons */
+.ladder-rung__movement-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.35);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.ladder-rung__movement-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ladder-rung__movement-label {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.ladder-rung__movement-detail {
+  color: var(--text-primary, inherit);
+}
+
+.ladder-rung__win-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.ladder-rung__win-btn {
+  white-space: normal;
+  line-height: 1.25;
+  min-height: 2.75rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.ladder-rung__win-btn--team1 {
+  background: rgba(59, 130, 246, 0.85);
+  border-color: rgba(59, 130, 246, 0.95);
+  color: #fff;
+}
+
+.ladder-rung__win-btn--team2 {
+  background: rgba(244, 114, 182, 0.85);
+  border-color: rgba(244, 114, 182, 0.95);
+  color: #fff;
+}
