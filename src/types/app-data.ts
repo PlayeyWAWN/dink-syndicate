@@ -6,7 +6,6 @@ import { QueueStateSchema } from '@/types/queue';
 import { SessionSchema } from '@/types/session';
 import { SessionArchiveSchema } from '@/types/session-archive';
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
-import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
 import { DEFAULT_GAME_MODE } from '@/types/game-mode';
 
 export const APP_DATA_VERSION = 3;
@@ -55,12 +54,9 @@ export const AppSettingsSchema = z.object({
     .default(DEFAULT_GAME_MODE)
     .optional(),
   /** Queue tab default court format for Create Match. */
-  courtFormat: z.enum(['doubles', 'singles'] satisfies readonly CourtFormat[]).default('doubles').optional(),
+  courtFormat: z.enum(['doubles', 'singles']).default('doubles').optional(),
   /** Queue tab default match mode for Create Match (doubles only). */
-  matchMode: z
-    .enum(['balanced', 'mixed_doubles', 'same_gender'] satisfies readonly QueueMatchMode[])
-    .default('balanced')
-    .optional(),
+  matchMode: z.enum(['balanced', 'mixed_doubles', 'same_gender']).default('balanced').optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;

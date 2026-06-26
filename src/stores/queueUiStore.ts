@@ -89,11 +89,17 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
   setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
   clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
-  hydrateFromSettings: (settings) =>
-    set({
-      courtFormat: settings?.courtFormat ?? 'doubles',
-      matchMode: settings?.matchMode ?? 'balanced',
-    }),
+  hydrateFromSettings: (settings) => {
+    const courtFormat: CourtFormat =
+      settings?.courtFormat === 'singles' ? 'singles' : 'doubles';
+    const matchMode: QueueMatchMode =
+      settings?.matchMode === 'mixed_doubles'
+        ? 'mixed_doubles'
+        : settings?.matchMode === 'same_gender'
+          ? 'same_gender'
+          : 'balanced';
+    set({ courtFormat, matchMode });
+  },
 }));
 
 export type { CourtFormat, QueueMatchMode };

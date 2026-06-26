@@ -78,9 +78,18 @@
 
 .stats-table th:not(:first-child),
 .stats-table td:not(:first-child) {
-  width: 2.75rem;
+  width: 2.5rem;
   text-align: center;
   white-space: nowrap;
+}
+
+.stats-table__col-player {
+  width: auto;
+}
+
+.stats-table__col-stat {
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
 }
 
 .stats-rankings-search {
@@ -182,7 +191,7 @@
 .stats-table__player-cell,
 .stats-export-report__player-cell {
   max-width: 0;
-  width: 38%;
+  width: 40%;
   overflow: hidden;
 }
 
@@ -358,6 +367,47 @@
 .stats-export-btn {
   width: 100%;
   margin-top: 0.85rem;
+}
+
+@media (max-width: 560px) {
+  .stats-table {
+    font-size: 0.78rem;
+  }
+
+  .stats-table th,
+  .stats-table td {
+    padding: 0.45rem 0.2rem;
+  }
+
+  .stats-table__player-cell {
+    width: 46%;
+  }
+
+  .stats-table th:not(:first-child),
+  .stats-table td:not(:first-child) {
+    width: 2.1rem;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+    font-size: 0.7rem;
+  }
+
+  .stats-table__col-stat {
+    font-size: 0.65rem;
+  }
+
+  .stats-table__player-inline {
+    gap: 0.25rem;
+  }
+
+  .stats-table__podium-icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* Trophy + rank number is redundant on narrow screens — keep trophy + name */
+  .stats-table__player-inline:has(.stats-table__podium-icon) .stats-table__player-rank {
+    display: none;
+  }
 }
 
 #stats-export-summary,
