@@ -1,7 +1,7 @@
 import {
   collection,
   doc,
-  getDocs,
+  getDoc,
   onSnapshot,
   query,
   where,
@@ -141,10 +141,9 @@ export async function fetchAdminDailyRange(days: number): Promise<AdminDailyRoll
 
   for (let i = 0; i < days; i += 1) {
     const date = todayDateKey(now - i * 86_400_000);
-    const snap = await getDocs(collection(db, 'adminAnalytics/daily'));
-    const match = snap.docs.find((d) => d.id === date);
-    if (match?.exists()) {
-      results.push(match.data() as AdminDailyRollup);
+    const snap = await getDoc(doc(db, FIRESTORE_PATHS.adminDaily(date)));
+    if (snap.exists()) {
+      results.push(snap.data() as AdminDailyRollup);
     }
   }
 

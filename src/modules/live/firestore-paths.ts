@@ -6,8 +6,8 @@ export const FIRESTORE_PATHS = {
     `liveSessions/${token}/viewers/${viewerId}`,
   appConfigGlobal: 'appConfig/global',
   userProfile: (uid: string) => `userProfiles/${uid}`,
-  adminDaily: (date: string) => `adminAnalytics/daily/${date}`,
-  wallboardDaily: (date: string) => `wallboardAnalytics/daily/${date}`,
+  adminDaily: (date: string) => `adminAnalytics/daily-${date}`,
+  wallboardDaily: (date: string) => `wallboardAnalytics/daily-${date}`,
 } as const;
 
 export function todayDateKey(now = Date.now()): string {

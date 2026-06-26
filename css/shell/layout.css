@@ -138,6 +138,27 @@ body::before {
   max-width: 220px;
 }
 
+@media (max-width: 520px) {
+  .bottom-actions {
+    gap: 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .bottom-actions button {
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 0;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .bottom-actions .bottom-nav-btn-inner {
+    font-size: 11px;
+    gap: 2px;
+  }
+}
+
 .nav-item {
   flex: 1 1 0;
   min-width: 0;

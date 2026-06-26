@@ -22,6 +22,11 @@ function authProviderFromUser(user: User | null): UserProfile['authProvider'] {
   return 'unknown';
 }
 
+/** Firestore rejects undefined field values on write. */
+function profileForFirestore(profile: UserProfile): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(profile).filter(([, value]) => value !== undefined));
+}
+
 export const appAnalyticsService = {
   async onAuthSession(session: { id: string; email?: string; organizerName: string }): Promise<void> {
     if (!isFirebaseEnabled()) return;
@@ -57,7 +62,7 @@ export const appAnalyticsService = {
         : undefined,
     };
 
-    await setDoc(ref, profile, { merge: true });
+    await setDoc(ref, profileForFirestore(profile), { merge: true });
 
     if (!existing.exists()) {
       await incrementAdminDailyField('newSignUps');

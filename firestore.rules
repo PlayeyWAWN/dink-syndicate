@@ -40,12 +40,12 @@ service cloud.firestore {
       allow delete: if isAppOwner();
     }
 
-    match /adminAnalytics/daily/{date} {
+    match /adminAnalytics/{rollupId} {
       allow read: if isAppOwner();
       allow create, update: if isAuthenticated();
     }
 
-    match /wallboardAnalytics/daily/{date} {
+    match /wallboardAnalytics/{rollupId} {
       allow read: if isAppOwner();
       allow create, update: if isAuthenticated();
     }
