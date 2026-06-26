@@ -23,6 +23,7 @@ export type AppIconId =
   | 'check'
   | 'play'
   | 'pickleball'
+  | 'synergy'
   | 'tier-early'
   | 'tier-on-time'
   | 'tier-grace'
@@ -46,6 +47,8 @@ const ICONS: Record<Exclude<AppIconId, 'delete' | 'pickleball'>, string> = {
   announce: `<svg ${SVG_24}><path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.84-5 6.7v2.07c4-.91 7-4.49 7-8.77s-3-7.86-7-8.77M16.5 12c0-1.77-1-3.29-2.5-4.03V16c1.5-.71 2.5-2.24 2.5-4M3 9v6h4l5 5V4L7 9z"/></svg>`,
   check: `<svg ${SVG_24}><path d="M21 7L9 19l-5.5-5.5l1.41-1.41L9 16.17L19.59 5.59z"/></svg>`,
   play: `<svg ${SVG_24}><path d="M8 5.14v14l11-7z"/></svg>`,
+  /** Linked partners — Synergy Team lock indicator. */
+  synergy: `<svg ${SVG_24}><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1M8 13h8v-2H8v2m9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5"/></svg>`,
   'tier-early': `<svg ${SVG_24}><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg>`,
   'tier-on-time': `<svg ${SVG_24}><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg>`,
   'tier-grace': `<svg ${SVG_24}><path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2"/></svg>`,

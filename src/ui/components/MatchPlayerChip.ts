@@ -7,6 +7,8 @@ export interface MatchPlayerChipOptions {
   onClick?: () => void;
   /** When 'dupr', show rating and skill instead of games played. */
   metaFormat?: 'games' | 'dupr';
+  /** Synergy partner name — shows a Synergy badge when set. */
+  synergyPartnerName?: string | null;
 }
 
 function formatChipMeta(player: Player, metaFormat: 'games' | 'dupr'): string {
@@ -39,9 +41,22 @@ export function renderMatchPlayerChip(
   const iconWrap = el('div', { className: 'match-player-chip__icon', 'aria-hidden': 'true' });
   mountAppIcon(iconWrap, genderAppIconId(player.gender));
 
+  const nameRow = el('div', { className: 'match-player-chip__name-row' });
+  nameRow.append(el('div', { className: 'match-player-chip__name' }, [player.name]));
+  if (options.synergyPartnerName) {
+    const synergyMark = el('span', {
+      className: 'match-player-chip__synergy-mark',
+      title: `Synergy partner: ${options.synergyPartnerName}`,
+      role: 'img',
+      'aria-label': `Synergy partner: ${options.synergyPartnerName}`,
+    });
+    mountAppIcon(synergyMark, 'synergy');
+    nameRow.append(synergyMark);
+  }
+
   const content = [
     iconWrap,
-    el('div', { className: 'match-player-chip__name' }, [player.name]),
+    nameRow,
     el('div', { className: 'match-player-chip__meta' }, [formatChipMeta(player, metaFormat)]),
   ];
 

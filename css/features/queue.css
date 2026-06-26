@@ -366,20 +366,24 @@ details:not([open]) .queue-section-accordion__collapsed-hint {
   }
 }
 
-.available-player-card__gender {
+.available-player-card__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
   border-radius: 999px;
-  font-size: 0.65rem;
-  font-weight: 700;
+  flex-shrink: 0;
   color: #fff;
   background: var(--avatar-male, var(--gender-male-bg, #0175c2));
 }
 
-.available-player-card--female .available-player-card__gender {
+.available-player-card__avatar .app-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.available-player-card--female .available-player-card__avatar {
   background: var(--avatar-female, var(--gender-female-bg, #e91e63));
 }
 

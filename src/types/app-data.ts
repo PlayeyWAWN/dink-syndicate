@@ -8,7 +8,7 @@ import { SessionArchiveSchema } from '@/types/session-archive';
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
 import { DEFAULT_GAME_MODE } from '@/types/game-mode';
 
-export const APP_DATA_VERSION = 3;
+export const APP_DATA_VERSION = 4;
 
 export const AppSettingsSchema = z.object({
   courtCount: z.number().int().min(0).max(24).default(DEFAULT_COURT_COUNT),
@@ -57,6 +57,12 @@ export const AppSettingsSchema = z.object({
   courtFormat: z.enum(['doubles', 'singles']).default('doubles').optional(),
   /** Queue tab default match mode for Create Match (doubles only). */
   matchMode: z.enum(['balanced', 'mixed_doubles', 'same_gender']).default('balanced').optional(),
+  /** When true, synergyPairs are enforced as fixed partner teams in open play doubles. */
+  synergyTeamsEnabled: z.boolean().default(false).optional(),
+  /** Locked partner pairs — each [playerA, playerB] always shares a team when both play. */
+  synergyPairs: z.array(z.tuple([z.string(), z.string()])).default([]).optional(),
+  /** Optional display names keyed by normalized pair id (playerA|playerB). */
+  synergyTeamNames: z.record(z.string(), z.string()).default({}).optional(),
 });
 
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
@@ -123,6 +129,21 @@ export function migrateAppData(raw: unknown): AppData {
     };
   }
 
+  if (version < 4) {
+    const sessionRecord = next.session as Record<string, unknown> | undefined;
+    next = {
+      ...next,
+      version: 4,
+      session: sessionRecord
+        ? {
+            ...sessionRecord,
+            publishToken: sessionRecord.publishToken,
+            publishEnabled: sessionRecord.publishEnabled,
+          }
+        : sessionRecord,
+    };
+  }
+
   return AppDataSchema.parse(next);
 }
 
@@ -159,6 +180,10 @@ export function mergeAppSettings(
     gameMode: partial?.gameMode ?? current?.gameMode ?? DEFAULT_GAME_MODE,
     courtFormat: partial?.courtFormat ?? current?.courtFormat ?? 'doubles',
     matchMode: partial?.matchMode ?? current?.matchMode ?? 'balanced',
+    synergyTeamsEnabled:
+      partial?.synergyTeamsEnabled ?? current?.synergyTeamsEnabled ?? false,
+    synergyPairs: partial?.synergyPairs ?? current?.synergyPairs ?? [],
+    synergyTeamNames: partial?.synergyTeamNames ?? current?.synergyTeamNames ?? {},
   };
 }
 
@@ -168,5 +193,8 @@ export function toSessionSettings(settings?: AppSettings) {
     arrivalGraceMinutes: settings?.arrivalGraceMinutes,
     arrivalPenaltyEnabled: settings?.arrivalPenaltyEnabled,
     lateMinutesWeight: settings?.lateMinutesWeight,
+    synergyTeamsEnabled: settings?.synergyTeamsEnabled,
+    synergyPairs: settings?.synergyPairs,
+    synergyTeamNames: settings?.synergyTeamNames,
   };
 }

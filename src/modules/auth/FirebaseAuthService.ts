@@ -10,13 +10,17 @@ import {
 } from 'firebase/auth';
 import { DEFAULT_ORGANIZER_NAME } from '@/config/constants';
 import { getFirebaseAuth } from '@/config/firebase-app';
+import { deriveOrganizerName, normalizeOrganizerName } from '@/modules/auth/deriveOrganizerName';
 import type { AuthProvider } from '@/modules/auth/AuthProvider';
 import { Session, SessionSchema, Unsubscribe } from '@/types/session';
 
 function userToSession(user: User): Session {
   return SessionSchema.parse({
     id: user.uid,
-    organizerName: user.displayName?.trim() || user.email?.split('@')[0] || DEFAULT_ORGANIZER_NAME,
+    organizerName: deriveOrganizerName({
+      displayName: user.displayName,
+      email: user.email,
+    }),
     email: user.email ?? undefined,
     role: 'queue_master',
     createdAt: user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : Date.now(),
@@ -82,7 +86,9 @@ export class FirebaseAuthService implements AuthProvider {
     const session = userToSession(result.user);
     this.session = SessionSchema.parse({
       ...session,
-      organizerName: trimmedName || session.organizerName,
+      organizerName: trimmedName
+        ? normalizeOrganizerName(trimmedName)
+        : session.organizerName,
     });
     this.emit(this.session);
     return this.session;
@@ -102,7 +108,12 @@ export class FirebaseAuthService implements AuthProvider {
 
   updateOrganizerName(name: string): Session {
     if (!this.session) throw new Error('No active session');
-    const trimmed = name.trim() || DEFAULT_ORGANIZER_NAME;
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
+    const trimmed = normalizeOrganizerName(name, {
+      displayName: user?.displayName,
+      email: user?.email ?? this.session.email,
+    });
     this.session = SessionSchema.parse({ ...this.session, organizerName: trimmed });
     this.emit(this.session);
     return this.session;

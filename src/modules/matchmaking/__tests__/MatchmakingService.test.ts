@@ -1,3 +1,4 @@
+import { splitTeams } from '@/lib/format-utils';
 import { MatchmakingService } from '@/modules/matchmaking/MatchmakingService';
 import { FairnessRanker } from '@/modules/matchmaking/FairnessRanker';
 import { balanceDoublesTeamsBySplit } from '@/modules/matchmaking/DuprBalance';
@@ -378,5 +379,61 @@ describe('MatchmakingService', () => {
 
     expect(entry?.playerIds).toHaveLength(4);
     expect(entry?.playerIds).not.toContain('out');
+  });
+
+  it('keeps synergy pair on the same team when Synergy Team is on', () => {
+    const players = [
+      withDoublesRating(createPlayer({ id: 'a', name: 'A' }), 4.0),
+      withDoublesRating(createPlayer({ id: 'b', name: 'B' }), 2.0),
+      withDoublesRating(createPlayer({ id: 'c', name: 'C' }), 4.0),
+      withDoublesRating(createPlayer({ id: 'd', name: 'D' }), 2.0),
+    ];
+
+    const entry = service.buildMatch({
+      courtFormat: 'doubles',
+      matchMode: 'balanced',
+      players: pool(players),
+      queueState: emptyState,
+      sessionSettings: {
+        synergyTeamsEnabled: true,
+        synergyPairs: [['a', 'b']],
+      },
+    });
+
+    expect(entry?.playerIds).toHaveLength(4);
+    const { teamA, teamB } = splitTeams(entry!.playerIds);
+    const onSameTeam =
+      (teamA.includes('a') && teamA.includes('b')) ||
+      (teamB.includes('a') && teamB.includes('b'));
+    expect(onSameTeam).toBe(true);
+  });
+
+  it('includes both synergy partners in the same match when both are available', () => {
+    const players = [
+      withDoublesRating(createPlayer({ id: 'jon', name: 'Jon' }), 0),
+      withDoublesRating(createPlayer({ id: 'darling', name: 'Darling', gender: 'female' }), 0),
+      withDoublesRating(createPlayer({ id: 'aj', name: 'AJ' }), 0),
+      withDoublesRating(createPlayer({ id: 'doc', name: 'Doc' }), 0),
+      withDoublesRating(createPlayer({ id: 'reggie', name: 'Reggie' }), 0),
+      withDoublesRating(createPlayer({ id: 'chrammy', name: 'Chrammy', gender: 'female' }), 0),
+    ];
+
+    const entry = service.buildMatch({
+      courtFormat: 'doubles',
+      matchMode: 'balanced',
+      players: pool(players),
+      queueState: emptyState,
+      sessionSettings: {
+        synergyTeamsEnabled: true,
+        synergyPairs: [['jon', 'darling']],
+      },
+    });
+
+    expect(entry?.playerIds).toEqual(expect.arrayContaining(['jon', 'darling']));
+    const { teamA, teamB } = splitTeams(entry!.playerIds);
+    const onSameTeam =
+      (teamA.includes('jon') && teamA.includes('darling')) ||
+      (teamB.includes('jon') && teamB.includes('darling'));
+    expect(onSameTeam).toBe(true);
   });
 });

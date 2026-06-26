@@ -1,10 +1,13 @@
 import { el } from '@/lib/dom-utils';
 import { playerService } from '@/modules/players/PlayerService';
+import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { usePlayerStore } from '@/stores/playerStore';
 import { usePlayersUiStore } from '@/stores/playersUiStore';
+import { useSessionStore } from '@/stores/sessionStore';
 import { appRouter } from '@/app/router';
 import { renderPlayerCard, PlayerCardOptions } from '@/ui/components/PlayerCard';
 import { openPlayerRegistrationModal } from '@/ui/components/PlayerRegistrationModal';
+import { renderPlayersSynergyControls } from '@/ui/components/SynergyTeamPanel';
 import {
   AppIconId,
   createAppIcon,
@@ -130,6 +133,18 @@ export function renderPlayersScreen(container: HTMLElement): void {
       'New players start not checked in. Check them in before they appear in Available Players or Find Match.',
     ])
   );
+
+  const settings = useSessionStore.getState().loadSnapshot()?.settings;
+  if (getGameMode(settings) === 'dupr_open_play') {
+    const matchMode = settings?.matchMode ?? 'balanced';
+    container.append(
+      renderPlayersSynergyControls({
+        players,
+        matchMode,
+        onRefresh: refreshPlayersTab,
+      })
+    );
+  }
 
   const exclusionBar = el('div', { className: 'players-exclusion-bar' });
   const exclusionIcon = el('span', { className: 'players-exclusion-bar__icon' });

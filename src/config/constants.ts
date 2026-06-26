@@ -24,3 +24,9 @@ export const DEFAULT_ORGANIZER_NAME = 'Queue Master';
 
 /** Default manual DUPR-style rating for new players (queue balancing only). */
 export const DEFAULT_DUPR_RATING = 3.5;
+
+/** App owner email — Admin tab, sponsor settings, Firestore rules. */
+export const APP_OWNER_EMAIL = 'benedictramosgarcia@gmail.com';
+
+/** Live wallboard public URL path prefix. */
+export const LIVE_WALLBOARD_PATH = '/live';

@@ -79,9 +79,82 @@ function removeFrontPlayers(
   };
 }
 
+function removeSpecificPlayersFromDueStack(
+  stack: WinLoseStackState,
+  playerIds: string[]
+): { stack: WinLoseStackState; pulled: string[] } | null {
+  const sourceStack = stack.nextUp;
+  const field = stackFieldForSource(sourceStack);
+  const dueIds = getNextUpStackIds(stack);
+
+  if (playerIds.length !== WIN_LOSE_STACK_PLAYERS) return null;
+  if (new Set(playerIds).size !== WIN_LOSE_STACK_PLAYERS) return null;
+
+  const dueSet = new Set(dueIds);
+  if (!playerIds.every((id) => dueSet.has(id))) return null;
+
+  const selectedSet = new Set(playerIds);
+  const pulled = dueIds.filter((id) => selectedSet.has(id));
+  const remaining = dueIds.filter((id) => !selectedSet.has(id));
+
+  return {
+    stack: setStackField(stack, field, remaining),
+    pulled,
+  };
+}
+
+/** First four players in the Next-Up stack — default manual selection. */
+export function getDefaultStackSelection(stack: WinLoseStackState): string[] {
+  return getNextUpStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS);
+}
+
+/** Resolve manual start lineup: exact valid selection, else top four from due stack. */
+export function resolveStackStartPlayerIds(
+  stack: WinLoseStackState,
+  selectedIds: string[]
+): string[] | null {
+  const dueIds = getNextUpStackIds(stack);
+  if (dueIds.length < WIN_LOSE_STACK_PLAYERS) return null;
+
+  if (
+    selectedIds.length === WIN_LOSE_STACK_PLAYERS &&
+    new Set(selectedIds).size === WIN_LOSE_STACK_PLAYERS &&
+    selectedIds.every((id) => dueIds.includes(id))
+  ) {
+    const selectedSet = new Set(selectedIds);
+    return dueIds.filter((id) => selectedSet.has(id));
+  }
+
+  return getDefaultStackSelection(stack);
+}
+
+/** Swap a player up or down within the Next-Up stack only. */
+export function reorderPlayerInDueStack(
+  state: QueueState,
+  playerId: string,
+  direction: 'up' | 'down'
+): QueueState | null {
+  const stack = ensureWinLoseStackState(state.winLoseStack);
+  const field = stackFieldForSource(stack.nextUp);
+  const current = field === 'winnerStack' ? stack.winnerStack : stack.loserStack;
+  const index = current.indexOf(playerId);
+  if (index < 0) return null;
+
+  const swapIndex = direction === 'up' ? index - 1 : index + 1;
+  if (swapIndex < 0 || swapIndex >= current.length) return null;
+
+  const next = [...current];
+  [next[index], next[swapIndex]] = [next[swapIndex]!, next[index]!];
+
+  return {
+    ...state,
+    winLoseStack: setStackField(stack, field, next),
+  };
+}
+
 /**
- * PK Shiu / open-play cold start: 1–4 players all in Winners; 5+ puts first 4 in
- * Winners and the rest in the Losers queue (waiting pile, not game losers yet).
+ * Session cold start: up to 4 players all in Winners; 5+ splits the check-in list
+ * evenly between Winners and Losers (check-in order preserved within each pile).
  */
 export function buildInitialStackDistribution(
   waitingPlayerIds: string[]
@@ -94,9 +167,10 @@ export function buildInitialStackDistribution(
     };
   }
 
+  const splitAt = Math.ceil(waitingPlayerIds.length / 2);
   return {
-    winnerStack: waitingPlayerIds.slice(0, WIN_LOSE_STACK_PLAYERS),
-    loserStack: waitingPlayerIds.slice(WIN_LOSE_STACK_PLAYERS),
+    winnerStack: waitingPlayerIds.slice(0, splitAt),
+    loserStack: waitingPlayerIds.slice(splitAt),
     nextUp: 'winners',
   };
 }
@@ -155,10 +229,15 @@ export interface StartStackMatchResult {
   partnerConflict: boolean;
 }
 
-/** Pull the front four from Next-Up stack and create an active match on the given court. */
+export interface StartNextStackMatchOptions {
+  playerIds?: string[];
+}
+
+/** Pull four from Next-Up stack and create an active match on the given court. */
 export function startNextStackMatch(
   state: QueueState,
-  courtId: string
+  courtId: string,
+  options?: StartNextStackMatchOptions
 ): StartStackMatchResult {
   let stack = ensureWinLoseStackState(state.winLoseStack);
   const sourceStack = stack.nextUp;
@@ -168,12 +247,19 @@ export function startNextStackMatch(
     return { state, match: null, partnerConflict: false };
   }
 
-  const { stack: afterPull, pulled } = removeFrontPlayers(
-    stack,
-    sourceStack,
-    WIN_LOSE_STACK_PLAYERS
-  );
-  stack = afterPull;
+  let pulled: string[];
+  if (options?.playerIds) {
+    const removed = removeSpecificPlayersFromDueStack(stack, options.playerIds);
+    if (!removed) {
+      return { state, match: null, partnerConflict: false };
+    }
+    stack = removed.stack;
+    pulled = removed.pulled;
+  } else {
+    const result = removeFrontPlayers(stack, sourceStack, WIN_LOSE_STACK_PLAYERS);
+    stack = result.stack;
+    pulled = result.pulled;
+  }
 
   const { playerIds, hadPartnerConflict } = partnerSplitPairing(
     pulled,

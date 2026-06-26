@@ -13,7 +13,6 @@ import { renderExcludedPlayersPanel } from '@/ui/components/ExcludedPlayersPanel
 import { renderRecentCompletedMatchesPanel } from '@/ui/components/RecentCompletedMatchesPanel';
 import { renderMatchQueueSection } from '@/ui/components/MatchQueueSection';
 import { renderWinLoseStackPanel } from '@/ui/components/WinLoseStackPanel';
-import { renderCollapsibleHelpPanel } from '@/ui/components/CollapsibleHelpPanel';
 import { renderLadderWaterfallPanel } from '@/ui/components/LadderWaterfallPanel';
 import { openBalanceNoticeDialog } from '@/ui/components/BalanceNoticeDialog';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
@@ -23,8 +22,15 @@ import {
   assessMatchBalance,
   buildManualMatch,
 } from '@/modules/queue/ManualMatchService';
+import { renderLivePublishPanel } from '@/ui/components/LivePublishPanel';
 export function renderQueueScreen(container: HTMLElement): void {
   clearLiveTimers(container);
+
+  container.append(
+    renderLivePublishPanel({
+      onChange: () => appRouter.navigate('queue'),
+    })
+  );
 
   const {
     queueState,
@@ -50,17 +56,12 @@ export function renderQueueScreen(container: HTMLElement): void {
   const stackMode = isWinLoseStackMode(gameMode);
   const ladderMode = isLadderWaterfallMode(gameMode);
   const waitThresholds = getAvailableWaitThresholds(appSettings);
-  const header = el('div', { className: 'section-header' });
-  header.append(el('div', { className: 'section-title' }, ['Queue']));
-  container.append(header);
-
-  if (!stackMode && !ladderMode) {
-    container.append(
-      el('p', { className: 'screen-lead' }, [
-        'Create matches automatically, tap available players to build manually, or tap queued names to swap or replace.',
-      ])
-    );
-  }
+  const synergyPairs = appSettings?.synergyPairs ?? [];
+  const synergyDisplay = {
+    synergyTeamsEnabled: appSettings?.synergyTeamsEnabled === true,
+    synergyPairs,
+    rosterPlayers: players,
+  };
 
   if (!ladderMode) {
     container.append(
@@ -69,6 +70,7 @@ export function renderQueueScreen(container: HTMLElement): void {
         courts,
         players,
         available,
+        synergy: synergyDisplay,
         onComplete: (matchId, team) => {
           completeMatch(matchId, team);
           appRouter.navigate('queue');
@@ -92,23 +94,6 @@ export function renderQueueScreen(container: HTMLElement): void {
   }
 
   if (stackMode) {
-    container.append(
-      renderCollapsibleHelpPanel(
-        [
-          el('p', { className: 'screen-lead' }, [
-            'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.',
-          ]),
-          el('p', { className: 'screen-lead' }, [
-            'Two waiting piles: first 4 check-ins start in Winners, the rest in Losers (waiting — not game losers yet). ',
-            'After each game, actual winners and losers return to the back of their pile. Next-Up alternates between piles.',
-          ]),
-        ],
-        {
-          title: 'How Win/Lose Stack works',
-          collapsedHint: 'Tap for mode details',
-        }
-      )
-    );
     useQueueStore.getState().reconcileWinLoseStackState();
     const liveQueueState = useQueueStore.getState().queueState;
     container.append(
@@ -155,9 +140,9 @@ export function renderQueueScreen(container: HTMLElement): void {
     const { section: matchQueueSection, createMatchBtn } = renderMatchQueueSection({
       courtFormat,
       matchMode,
-      availableCount: available.length,
-      queueLength: queueState.queue.length,
       openCourtCount: openCourts.length,
+      players,
+      synergy: synergyDisplay,
     });
     container.append(matchQueueSection);
 
@@ -169,6 +154,9 @@ export function renderQueueScreen(container: HTMLElement): void {
         },
         selectedPlayerIds,
         requiredCount,
+        synergyPairs,
+        synergyTeamsEnabled: synergyDisplay.synergyTeamsEnabled,
+        rosterPlayers: players,
         onPlayerTap: (playerId) => {
           const ui = useQueueUiStore.getState();
           if (
@@ -194,7 +182,12 @@ export function renderQueueScreen(container: HTMLElement): void {
           const selected = ui.selectedPlayerIds
             .map((id) => players.find((player) => player.id === id))
             .filter(Boolean) as typeof players;
-          const built = buildManualMatch(ui.courtFormat, ui.matchMode, selected);
+          const built = buildManualMatch(
+            ui.courtFormat,
+            ui.matchMode,
+            selected,
+            appSettings
+          );
           if (!built.ok) {
             alert(built.message);
             return;

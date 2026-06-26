@@ -1,0 +1,26 @@
+.sponsor-settings__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.sponsor-settings__row {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #ddd);
+}
+
+.sponsor-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.sponsor-settings__preview-logo {
+  max-height: 48px;
+  width: 100%;
+  object-fit: contain;
+}

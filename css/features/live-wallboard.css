@@ -1,0 +1,127 @@
+.live-wallboard-body {
+  background: #0b1220;
+  color: #f5f7fb;
+  min-height: 100vh;
+}
+
+.live-wallboard-root {
+  min-height: 100vh;
+}
+
+.live-wallboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.live-wallboard__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.live-wallboard__logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.live-wallboard__organizer {
+  font-size: 1.75rem;
+  margin: 0;
+}
+
+.live-wallboard__clock,
+.live-wallboard__updated {
+  margin: 0.25rem 0 0;
+  opacity: 0.85;
+}
+
+.live-wallboard__section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.live-wallboard__section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+}
+
+.live-wallboard__empty {
+  opacity: 0.75;
+}
+
+.live-wallboard__active-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.live-wallboard__active-card {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.live-wallboard__sponsor-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.live-wallboard__sponsor-logo {
+  max-height: 64px;
+  width: 100%;
+  object-fit: contain;
+}
+
+.live-wallboard__queue-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.live-wallboard__queue-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0;
+}
+
+.live-wallboard__rankings {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.live-wallboard__rankings th,
+.live-wallboard__rankings td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.live-wallboard__delta--up { color: #6ee7a0; }
+.live-wallboard__delta--down { color: #f87171; }
+.live-wallboard__delta--new { color: #93c5fd; font-size: 0.75rem; }
+
+.live-wallboard__pager {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.live-wallboard__error,
+.live-wallboard--inactive {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+@media (max-width: 900px) {
+  .live-wallboard__sponsor-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

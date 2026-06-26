@@ -11,6 +11,7 @@
 @import './features/players-registration.css';
 @import './features/queue.css';
 @import './features/win-lose-stack.css';
+@import './features/synergy-team.css';
 @import './features/rotation-controls.css';
 @import './features/ladder-waterfall.css';
 @import './features/ladder-waterfall-board.css';
@@ -26,3 +27,7 @@
 @import './features/stats-summary.css';
 @import './features/stats-analytics.css';
 @import './features/auth.css';
+@import './features/live-wallboard.css';
+@import './features/live-publish.css';
+@import './features/sponsor-settings.css';
+@import './features/admin-dashboard.css';

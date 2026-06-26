@@ -23,6 +23,8 @@ export interface SessionSettingsSummary {
   availableWaitCriticalMinutes: number;
   autoRotationEnabled: boolean | null;
   ttsVoiceUri: string | null;
+  synergyTeamsEnabled: boolean;
+  synergyPairCount: number;
 }
 
 function labelForGameMode(mode: GameMode): string {
@@ -66,5 +68,7 @@ export function buildSessionSettingsSummary(
       ? isAutoRotationEnabled(queueState)
       : null,
     ttsVoiceUri: settings.ttsVoiceUri ?? null,
+    synergyTeamsEnabled: settings.synergyTeamsEnabled ?? false,
+    synergyPairCount: settings.synergyPairs?.length ?? 0,
   };
 }

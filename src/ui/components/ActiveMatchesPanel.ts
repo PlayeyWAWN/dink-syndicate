@@ -5,6 +5,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { renderMatchCourtBoard } from '@/ui/components/MatchCourtBoard';
 import { openQueuePlayerEditDialog } from '@/ui/components/QueuePlayerEditDialog';
 import { createAppIcon, mountAppIcon } from '@/ui/icons/app-icons';
+import { SynergyDisplayOptions } from '@/ui/components/SynergyTeamModal';
 import { Match } from '@/types/queue';
 import { Court } from '@/types/court';
 import { Player } from '@/types/player';
@@ -14,6 +15,7 @@ export interface ActiveMatchesPanelOptions {
   courts: Court[];
   players: Player[];
   available: Player[];
+  synergy?: SynergyDisplayOptions;
   onComplete: (matchId: string, team: 'A' | 'B') => void;
   onCancel: (matchId: string) => void;
   onSwapPlayer: (matchId: string, playerIdA: string, playerIdB: string) => boolean;
@@ -33,6 +35,7 @@ export function renderActiveMatchesPanel(options: ActiveMatchesPanelOptions): HT
     courts,
     players,
     available,
+    synergy,
     onComplete,
     onCancel,
     onSwapPlayer,
@@ -126,6 +129,7 @@ export function renderActiveMatchesPanel(options: ActiveMatchesPanelOptions): HT
           players,
           active: true,
           label: court?.label ?? 'Active match',
+          synergy,
           onPlayerChipClick: (playerId) => {
             const player = players.find((item) => item.id === playerId);
             if (!player) return;

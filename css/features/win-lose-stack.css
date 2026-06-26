@@ -1,5 +1,67 @@
 /* —— Win/Lose Stack panel —— */
 
+.win-lose-stack__header {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.win-lose-stack__help-link {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0.2rem 0;
+  border: none;
+  background: none;
+  color: #7dd3fc;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.win-lose-stack__help-link:hover {
+  color: #bae6fd;
+}
+
+.win-lose-stack__sticky-dock {
+  position: fixed;
+  bottom: var(--bottom-actions-height);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-width: var(--app-desktop-readable-max, 1200px);
+  margin: 0 auto;
+  padding: 0.65rem 20px;
+  background: var(--bottom-actions-bg);
+  backdrop-filter: var(--use-backdrop-blur);
+  -webkit-backdrop-filter: var(--use-backdrop-blur);
+  border-top: 1px solid var(--bottom-actions-border);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.win-lose-stack__sticky-status {
+  margin: 0 0 0.45rem;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.win-lose-stack__sticky-status--blocked {
+  color: #fbbf24;
+}
+
+.win-lose-stack__start-btn {
+  width: 100%;
+  margin: 0;
+}
+
+.win-lose-stack__sticky-spacer {
+  height: 6.75rem;
+  pointer-events: none;
+}
+
 .win-lose-stack__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -58,6 +120,89 @@
   color: rgba(34, 197, 94, 0.95);
 }
 
+.win-lose-stack__lineup {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.5rem;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.win-lose-stack__lineup-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #22c55e;
+}
+
+.win-lose-stack__lineup-team {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.4rem;
+}
+
+.win-lose-stack__lineup-team--a {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.win-lose-stack__lineup-team--b {
+  background: rgba(244, 114, 182, 0.12);
+  border: 1px solid rgba(244, 114, 182, 0.28);
+}
+
+.win-lose-stack__lineup-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.win-lose-stack__lineup-team--a .win-lose-stack__lineup-label {
+  color: #7dd3fc;
+}
+
+.win-lose-stack__lineup-team--b .win-lose-stack__lineup-label {
+  color: #f9a8d4;
+}
+
+.win-lose-stack__lineup-names {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-on-surface);
+}
+
+.win-lose-stack__lineup-vs {
+  margin: 0.35rem 0;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.win-lose-stack__lineup-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #fbbf24;
+}
+
+.win-lose-stack__waiting-label {
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .win-lose-stack__count {
   font-size: 0.82rem;
   color: var(--text-muted);
@@ -77,6 +222,77 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.88rem;
+}
+
+.win-lose-stack__item--selectable {
+  cursor: pointer;
+  padding: 0.3rem 0.35rem;
+  margin: 0 -0.15rem;
+  border-radius: 0.45rem;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.win-lose-stack__item--selectable:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.win-lose-stack__item--selectable:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.65);
+  outline-offset: 1px;
+}
+
+.win-lose-stack__item--selected {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.win-lose-stack__item--selected .win-lose-stack__position {
+  background: rgba(56, 189, 248, 0.28);
+  color: #7dd3fc;
+}
+
+.win-lose-stack__item--selected .win-lose-stack__name {
+  font-weight: 700;
+  color: #bae6fd;
+}
+
+.win-lose-stack__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.win-lose-stack__item-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.2rem;
+  margin-left: auto;
+}
+
+.win-lose-stack__reorder-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.35rem;
+  background: rgba(15, 23, 42, 0.45);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.win-lose-stack__reorder-btn:hover:not(:disabled) {
+  color: var(--text-on-surface);
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+.win-lose-stack__reorder-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .win-lose-stack__position {
@@ -128,6 +344,12 @@
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.1);
   border-left: 3px solid #fbbf24;
+}
+
+.win-lose-stack__status--manual {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 3px solid rgba(56, 189, 248, 0.55);
 }
 
 .win-lose-stack__hint {

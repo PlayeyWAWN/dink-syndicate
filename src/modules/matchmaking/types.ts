@@ -4,11 +4,17 @@ import { QueueState } from '@/types/queue';
 
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
 import { AppSettings } from '@/types/app-data';
+import { SynergyTeamConfig } from '@/modules/matchmaking/synergyTeam';
 
-/** Session timing for arrival penalty in Find Match. */
+/** Session timing and synergy for Find Match. */
 export type SessionSettings = Pick<
   AppSettings,
-  'sessionStartTime' | 'arrivalGraceMinutes' | 'arrivalPenaltyEnabled' | 'lateMinutesWeight'
+  | 'sessionStartTime'
+  | 'arrivalGraceMinutes'
+  | 'arrivalPenaltyEnabled'
+  | 'lateMinutesWeight'
+  | 'synergyTeamsEnabled'
+  | 'synergyPairs'
 >;
 
 export interface MatchmakingRequest {
@@ -24,6 +30,7 @@ export interface MatchmakingContext {
   arrivalGraceMinutes: number;
   arrivalPenaltyEnabled: boolean;
   lateMinutesWeight: number;
+  synergy: SynergyTeamConfig;
 }
 
 export interface BalancedQuartetResult {

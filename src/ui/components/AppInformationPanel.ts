@@ -32,7 +32,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does Win/Lose Stack work?',
     answer:
-      'Check in at least four players and switch to Win/Lose Stack in Settings. Record winners on active matches — players auto-route to the Winners or Losers pile, and the next game starts when the Next-Up pile has four players. Partners shuffle each game.',
+      'Check in at least four players and choose Win/Lose Stack in Settings. Players split evenly into Winners and Losers piles at session start. After each game, record the winner — players route to the back of their pile and Next-Up alternates between piles. Partners shuffle each game. In manual mode (Auto-rotation off), tap players in the Next-Up pile to pick the lineup and use arrows to reorder before Start next game.',
   },
   {
     question: 'How does Ladder/Waterfall work?',
@@ -42,7 +42,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'What is Auto-rotation?',
     answer:
-      'In Win/Lose Stack and Ladder/Waterfall modes, Auto-rotation is off by default. Tap Auto-rotation on the Queue tab when you want the app to handle everything: routing players after each game, filling benches from the waiting pool (fewest games played first), and starting courts when four players are ready. Turn it off again to assign lineups manually.',
+      'In Win/Lose Stack and Ladder/Waterfall modes, Auto-rotation is off by default. Tap Auto-rotation on the Queue tab when you want the app to handle everything: routing players after each game, filling benches from the waiting pool (fewest games played first), and starting courts when four players are ready. Turn it off again to pick lineups manually — in Win/Lose Stack, tap players in the Next-Up pile and reorder before Start next game.',
   },
   {
     question: 'How do I end a Win/Lose Stack or Ladder session?',
@@ -53,6 +53,11 @@ const FAQ_ITEMS: FaqItem[] = [
     question: 'Can I build matches manually?',
     answer:
       'Yes, in DUPR Open Play mode. Tap available players in the queue list to select them (2 for singles, 4 for doubles), then tap Build manual match. You can swap or replace players on queued matches by tapping their names.',
+  },
+  {
+    question: 'What is Synergy Team?',
+    answer:
+      'In DUPR Open Play doubles, open the Players tab and turn on Synergy Team. Tap Synergy to create locked partner pairs using player dropdowns (up to six teams). When Synergy Team is on, Find Match always puts both partners in the same game when both are available, keeps them on the same team, and blocks queue edits that would split them. Mixed doubles pairs must be one male and one female; same-gender mode requires both players to share a gender. Turn Synergy Team off to use normal DUPR pairing rules while keeping your saved teams.',
   },
   {
     question: 'What if all courts are occupied?',

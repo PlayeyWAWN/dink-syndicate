@@ -87,8 +87,31 @@ describe('migrateAppData', () => {
     };
 
     const migrated = migrateAppData(raw);
-    expect(migrated.version).toBe(3);
+    expect(migrated.version).toBe(APP_DATA_VERSION);
     expect(migrated.settings?.gameMode).toBe('dupr_open_play');
+  });
+
+  it('migrates v3 snapshots to v4 preserving publish fields', () => {
+    const raw = {
+      version: 3,
+      session: SessionSchema.parse({
+        id: 'test-session',
+        organizerName: 'Host',
+        role: 'queue_master',
+        createdAt: Date.now(),
+        publishToken: 'live-token',
+        publishEnabled: true,
+      }),
+      players: [],
+      courts: [],
+      queueState: { queue: [], activeMatches: [], completedMatches: [] },
+      settings: { organizerName: 'Host', courtCount: 2 },
+    };
+
+    const migrated = migrateAppData(raw);
+    expect(migrated.version).toBe(4);
+    expect(migrated.session.publishToken).toBe('live-token');
+    expect(migrated.session.publishEnabled).toBe(true);
   });
 
   it('accepts ladder_waterfall as a persisted game mode', () => {

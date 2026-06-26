@@ -7,12 +7,32 @@ import {
 
 import { useSessionStore } from '@/stores/sessionStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { pruneSynergyPairs, pruneSynergyTeamNames } from '@/modules/matchmaking/synergyTeam';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 
 import { Player, PlayerGender, isPlayerMatchable } from '@/types/player';
 
 
+
+function syncSynergyPairsFromRoster(players: Player[]): void {
+  const settings = useSessionStore.getState().loadSnapshot()?.settings;
+  if (!settings?.synergyPairs?.length) return;
+
+  const matchableIds = new Set(players.filter(isPlayerMatchable).map((player) => player.id));
+  const pruned = pruneSynergyPairs(settings.synergyPairs, matchableIds);
+  const prunedNames = pruneSynergyTeamNames(settings.synergyTeamNames ?? {}, pruned);
+
+  if (
+    pruned.length !== settings.synergyPairs.length ||
+    Object.keys(prunedNames).length !== Object.keys(settings.synergyTeamNames ?? {}).length
+  ) {
+    useSessionStore.getState().updateSessionSettings({
+      synergyPairs: pruned,
+      synergyTeamNames: prunedNames,
+    });
+  }
+}
 
 interface PlayerStoreState {
 
@@ -160,6 +180,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     persist(next);
 
+    syncSynergyPairsFromRoster(next);
+
     useQueueStore.getState().onPlayerRemovedFromStackMode(playerId);
 
   },
@@ -173,6 +195,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set({ players: next });
 
     persist(next);
+
+    syncSynergyPairsFromRoster(next);
 
     const player = next.find((item) => item.id === playerId);
     syncGameModeForPlayer(playerId, player);
@@ -188,6 +212,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set({ players: next });
 
     persist(next);
+
+    syncSynergyPairsFromRoster(next);
 
     const player = next.find((item) => item.id === playerId);
     syncGameModeForPlayer(playerId, player);

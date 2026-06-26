@@ -21,11 +21,11 @@ export const CREATE_MATCH_ERROR = {
     'No skill-balanced singles pair found. Try checking in players with closer DUPR ratings.',
   balancedInsufficient: 'Need at least 4 available players for balanced doubles.',
   balancedNoMatch:
-    'No balanced doubles match found with the current skill spread. Try Mix or Same Gender mode, or adjust who is available.',
+    'No balanced doubles match found with the current skill spread. Try Mix or Same Gender mode, adjust who is available, or turn off Synergy Team if locked pairs block a valid lineup.',
   mixedInsufficient:
     'Need at least 2 available males and 2 available females for mixed doubles.',
   mixedNoMatch:
-    'No balanced mixed doubles match found with the current skill spread. Adjust who is available or try Balanced mode.',
+    'No balanced mixed doubles match found with the current skill spread. Adjust who is available, try Balanced mode, or turn off Synergy Team if locked pairs block a valid lineup.',
   sameGenderInsufficient:
     'Need at least 4 available males or 4 available females for a skill-balanced same-gender match.',
   sameGenderNoMatch:

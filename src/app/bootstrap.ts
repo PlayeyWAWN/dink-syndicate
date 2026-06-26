@@ -1,6 +1,9 @@
 import { runFirebaseAuthGate } from '@/app/auth-gate';
 import { appRouter, AppRoute } from '@/app/router';
 import { isFirebaseEnabled } from '@/config/firebase';
+import { isAppOwner } from '@/modules/auth/isAppOwner';
+import { appAnalyticsService } from '@/modules/analytics/AppAnalyticsService';
+import { livePublishService } from '@/modules/live/LivePublishService';
 import { AppShell, mountAppShell, setActiveShellRoute } from '@/ui/shell/app-shell';
 import { isOnline, onConnectivityChange } from '@/lib/offline-utils';
 import { useCourtStore } from '@/stores/courtStore';
@@ -14,12 +17,32 @@ import { renderPlayersScreen } from '@/ui/screens/PlayersScreen';
 import { renderQueueScreen } from '@/ui/screens/QueueScreen';
 import { renderSettingsScreen } from '@/ui/screens/SettingsScreen';
 import { renderStatsScreen } from '@/ui/screens/StatsScreen';
+import { renderAdminScreen, teardownAdminScreen } from '@/ui/screens/AdminScreen';
 import { clearElement } from '@/lib/dom-utils';
 
 let shell: AppShell | null = null;
+let lastRoute: AppRoute | null = null;
+
+function showAdminTab(): boolean {
+  const session = useSessionStore.getState().session;
+  return isFirebaseEnabled() && isAppOwner(session);
+}
+
+function guardAdminRoute(route: AppRoute): AppRoute {
+  if (route === 'admin' && !showAdminTab()) {
+    return 'home';
+  }
+  return route;
+}
 
 function renderTab(route: AppRoute): void {
   if (!shell) return;
+
+  if (lastRoute === 'admin' && route !== 'admin') {
+    teardownAdminScreen();
+  }
+  lastRoute = route;
+
   const pane = shell.tabPanes[route];
   clearElement(pane);
 
@@ -42,6 +65,9 @@ function renderTab(route: AppRoute): void {
     case 'settings':
       renderSettingsScreen(pane);
       break;
+    case 'admin':
+      renderAdminScreen(pane);
+      break;
     default:
       renderHomeScreen(pane);
   }
@@ -51,11 +77,27 @@ function renderApp(): void {
   const root = document.getElementById('app');
   if (!root) return;
 
-  if (!shell) {
-    shell = mountAppShell(root, (route) => appRouter.navigate(route));
+  const ownerVisible = showAdminTab();
+  const adminMismatch = shell && Boolean(shell.adminBtn) !== ownerVisible;
+
+  if (!shell || adminMismatch) {
+    shell = mountAppShell(
+      root,
+      (route) => {
+        const next = guardAdminRoute(route);
+        void appAnalyticsService.onRouteChange(next);
+        appRouter.navigate(next);
+      },
+      { showAdmin: ownerVisible }
+    );
   }
 
-  const route = appRouter.getRoute();
+  const route = guardAdminRoute(appRouter.getRoute());
+  if (route !== appRouter.getRoute()) {
+    appRouter.navigate(route);
+    return;
+  }
+
   setActiveShellRoute(shell, route);
   renderTab(route);
 }
@@ -84,4 +126,11 @@ export async function bootstrapApp(): Promise<void> {
   useQueueStore.getState().hydrate();
   useQueueUiStore.getState().hydrateFromSettings(snapshot?.settings);
   renderApp();
+}
+
+export async function onAppSignOut(): Promise<void> {
+  if (livePublishService.isPublishEnabled()) {
+    await livePublishService.disablePublish();
+  }
+  await appAnalyticsService.onSignOut();
 }

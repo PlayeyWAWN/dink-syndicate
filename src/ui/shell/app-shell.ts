@@ -1,7 +1,7 @@
 import { el } from '@/lib/dom-utils';
 import { mountNavIcon, NavIconId } from '@/ui/icons/nav-icons';
 
-export type TabRoute = 'home' | 'players' | 'courts' | 'queue' | 'stats' | 'settings';
+export type TabRoute = 'home' | 'players' | 'courts' | 'queue' | 'stats' | 'settings' | 'admin';
 
 export const TOP_NAV_TABS: { id: TabRoute; label: string; icon: NavIconId }[] = [
   { id: 'players', label: 'Players', icon: 'players' },
@@ -43,12 +43,18 @@ export interface AppShell {
   tabPanes: Record<TabRoute, HTMLElement>;
   topNav: HTMLElement;
   bottomActions: HTMLElement;
+  adminBtn: HTMLButtonElement | null;
+}
+
+export interface MountAppShellOptions {
+  showAdmin?: boolean;
 }
 
 /** Build Smash-style app shell once (top nav, tab panes, bottom bar). */
 export function mountAppShell(
   root: HTMLElement,
-  onNavigate: (route: AppRoute) => void
+  onNavigate: (route: AppRoute) => void,
+  options?: MountAppShellOptions
 ): AppShell {
   root.replaceChildren();
 
@@ -78,7 +84,7 @@ export function mountAppShell(
   const content = el('div', { className: 'content' });
   const tabContainer = el('div', { className: 'tab-container' });
   const tabPanes = {} as Record<TabRoute, HTMLElement>;
-  const allTabs: TabRoute[] = ['home', 'players', 'courts', 'queue', 'stats', 'settings'];
+  const allTabs: TabRoute[] = ['home', 'players', 'courts', 'queue', 'stats', 'settings', 'admin'];
 
   for (const id of allTabs) {
     const pane = el('div', {
@@ -93,6 +99,21 @@ export function mountAppShell(
   content.append(tabContainer);
 
   const bottomActions = el('div', { className: 'bottom-actions', id: 'bottom-actions' });
+
+  let adminBtn: HTMLButtonElement | null = null;
+  if (options?.showAdmin) {
+    adminBtn = el('button', {
+      className: 'btn btn-small admin-nav-btn',
+      id: 'admin-btn',
+      type: 'button',
+      'data-tab': 'admin',
+    }) as HTMLButtonElement;
+    const adminInner = el('span', { className: 'bottom-nav-btn-inner' });
+    adminInner.append(el('span', {}, ['Admin']));
+    adminBtn.append(adminInner);
+    adminBtn.addEventListener('click', () => onNavigate('admin'));
+    bottomActions.append(adminBtn);
+  }
 
   const settingsBtn = el('button', {
     className: 'btn btn-small',
@@ -124,7 +145,7 @@ export function mountAppShell(
   container.append(topNav, content, bottomActions);
   root.append(container);
 
-  return { tabPanes, topNav, bottomActions };
+  return { tabPanes, topNav, bottomActions, adminBtn };
 }
 
 export function setActiveShellRoute(shell: AppShell, route: AppRoute): void {
@@ -136,4 +157,8 @@ export function setActiveShellRoute(shell: AppShell, route: AppRoute): void {
   for (const id of Object.keys(shell.tabPanes) as TabRoute[]) {
     shell.tabPanes[id].classList.toggle('active', id === route);
   }
+
+  shell.bottomActions.querySelectorAll('[data-tab]').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === route);
+  });
 }

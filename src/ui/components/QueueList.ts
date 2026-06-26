@@ -4,6 +4,7 @@ import { formatQueueWaitDuration } from '@/lib/match-timer';
 import { announceQueueEntry, isTtsSupported } from '@/lib/tts-service';
 import { useSessionStore } from '@/stores/sessionStore';
 import { renderMatchPlayerChip } from '@/ui/components/MatchPlayerChip';
+import { SynergyDisplayOptions, getSynergyChipLabel } from '@/ui/components/SynergyTeamModal';
 import { createAppIcon, mountAppIcon } from '@/ui/icons/app-icons';
 import { QueueEntry } from '@/types/queue';
 import { Player } from '@/types/player';
@@ -12,6 +13,7 @@ export interface QueueListOptions {
   entries: QueueEntry[];
   players: Player[];
   hasOpenCourt: boolean;
+  synergy?: SynergyDisplayOptions;
   onRemove: (entryId: string) => void;
   onPlay: (entryId: string) => void;
   /** Fired when Play is tapped but every court is occupied. */
@@ -31,6 +33,7 @@ function renderTeamSide(
   team: 'A' | 'B',
   playerIds: string[],
   players: Player[],
+  synergy: SynergyDisplayOptions | undefined,
   onPlayerChipClick?: (entryId: string, playerId: string) => void
 ): HTMLElement {
   const { teamA, teamB } = splitTeams(playerIds);
@@ -51,6 +54,7 @@ function renderTeamSide(
     playersRow.append(
       renderMatchPlayerChip(player, {
         onClick: onPlayerChipClick ? () => onPlayerChipClick(entryId, id) : undefined,
+        synergyPartnerName: synergy ? getSynergyChipLabel(id, synergy) : null,
       })
     );
   }
@@ -59,7 +63,7 @@ function renderTeamSide(
 }
 
 export function renderQueueList(options: QueueListOptions): HTMLElement {
-  const { entries, players, hasOpenCourt, onRemove, onPlay, onNoOpenCourts, onPlayerChipClick } =
+  const { entries, players, hasOpenCourt, synergy, onRemove, onPlay, onNoOpenCourts, onPlayerChipClick } =
     options;
   const list = el('div', { className: 'queue-list match-queue-list' });
 
@@ -174,9 +178,9 @@ export function renderQueueList(options: QueueListOptions): HTMLElement {
 
     const vsLayout = el('div', { className: 'match-queue-card__vs-layout' });
     vsLayout.append(
-      renderTeamSide(entry.id, 'A', entry.playerIds, players, onPlayerChipClick),
+      renderTeamSide(entry.id, 'A', entry.playerIds, players, synergy, onPlayerChipClick),
       el('div', { className: 'match-queue-card__vs' }, ['VS']),
-      renderTeamSide(entry.id, 'B', entry.playerIds, players, onPlayerChipClick)
+      renderTeamSide(entry.id, 'B', entry.playerIds, players, synergy, onPlayerChipClick)
     );
 
     card.append(header, fairness, vsLayout);

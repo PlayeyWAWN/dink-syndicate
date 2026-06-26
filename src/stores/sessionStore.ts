@@ -14,7 +14,7 @@ import { AppData, APP_DATA_VERSION, AppSettings, mergeAppSettings, migrateAppDat
 import { Court } from '@/types/court';
 import { Player } from '@/types/player';
 import { QueueState } from '@/types/queue';
-import { Session } from '@/types/session';
+import { Session, SessionSchema } from '@/types/session';
 import { SessionArchive } from '@/types/session-archive';
 
 interface SessionStoreState {
@@ -33,6 +33,7 @@ interface SessionStoreState {
     queueState?: QueueState;
     settings?: Partial<AppSettings>;
     sessionArchives?: SessionArchive[];
+    session?: Partial<Session>;
   }) => void;
   loadSnapshot: () => AppData | null;
   appendSessionArchive: (archive: SessionArchive) => void;
@@ -87,6 +88,8 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
     setActiveStorageUid(session.id);
 
     const existingRaw = readEnhancedData<Record<string, unknown>>(session.id);
+    let mergedSession = session;
+
     if (!existingRaw) {
       localStorageService.save(buildDefaultAppData(session), session.id);
     } else {
@@ -96,9 +99,15 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
       if (existingVersion < APP_DATA_VERSION) {
         localStorageService.save(migrated, session.id);
       }
+      mergedSession = SessionSchema.parse({
+        ...session,
+        organizerName: migrated.settings?.organizerName ?? session.organizerName,
+        publishToken: migrated.session.publishToken,
+        publishEnabled: migrated.session.publishEnabled,
+      });
     }
 
-    set({ session, hydrated: true });
+    set({ session: mergedSession, hydrated: true });
   },
 
   clearSession: () => {
@@ -118,8 +127,14 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
   },
 
   persistSnapshot: (partial) => {
-    const { session } = get();
+    let { session } = get();
     if (!session) return;
+
+    if (partial.session) {
+      session = SessionSchema.parse({ ...session, ...partial.session });
+      set({ session });
+    }
+
     const current = localStorageService.load(session.id) ?? buildDefaultAppData(session);
     const next: AppData = {
       ...current,

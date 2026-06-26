@@ -77,7 +77,8 @@ export function handleStackModeCompleteMatch(
 
 export function tryStartWinLoseStackMatchFromStore(
   queueState: QueueState,
-  preferredCourtId?: string
+  preferredCourtId?: string,
+  playerIds?: string[]
 ): { state: QueueState; match: Match | null } {
   if (!isStackModeActive()) {
     return { state: queueState, match: null };
@@ -90,7 +91,9 @@ export function tryStartWinLoseStackMatchFromStore(
   if (!openCourt) return { state: queueState, match: null };
   if (!canStartWinLoseStackMatch(queueState)) return { state: queueState, match: null };
 
-  const { state, match } = startNextStackMatch(queueState, openCourt.id);
+  const { state, match } = startNextStackMatch(queueState, openCourt.id, {
+    playerIds,
+  });
   if (!match) return { state: queueState, match: null };
 
   useCourtStore.getState().assignMatch(openCourt.id, match.id);
