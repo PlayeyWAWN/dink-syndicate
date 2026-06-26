@@ -9,8 +9,11 @@
 @import './features/players.css';
 @import './features/players-registration.css';
 @import './features/queue.css';
+@import './features/win-lose-stack.css';
+@import './features/rotation-controls.css';
 @import './features/ladder-waterfall.css';
 @import './features/ladder-waterfall-board.css';
+@import './features/ladder-waterfall-sidebar.css';
 @import './features/queue-actions.css';
 @import './features/queue-recent.css';
 @import './features/queue-dialog.css';
