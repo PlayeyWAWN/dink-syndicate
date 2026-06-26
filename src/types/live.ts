@@ -46,6 +46,7 @@ export const PublicRankingRowSchema = z.object({
   wins: z.number().int().nonnegative(),
   losses: z.number().int().nonnegative(),
   gamesPlayed: z.number().int().nonnegative(),
+  duprDoublesRating: z.number().optional(),
   delta: z.enum(['up', 'down', 'same', 'new']).optional(),
 });
 

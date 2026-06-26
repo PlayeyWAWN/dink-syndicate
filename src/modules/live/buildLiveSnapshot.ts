@@ -60,6 +60,7 @@ function buildRankings(players: Player[]): PublicRankingRow[] {
     wins: player.wins,
     losses: player.losses,
     gamesPlayed: player.gamesPlayed,
+    duprDoublesRating: player.dupr?.duprDoublesRating,
   }));
 }
 

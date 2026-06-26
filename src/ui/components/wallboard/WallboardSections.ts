@@ -3,6 +3,7 @@ import { formatMatchDuration, mountLiveTimers } from '@/lib/match-timer';
 import { splitTeams } from '@/lib/format-utils';
 import { paginateItems } from '@/modules/stats/MatchHistoryService';
 import { PublicMatch, PublicPlayer, PublicQueueEntry, PublicRankingRow, SponsorConfig, WALLBOARD_MATCH_HISTORY_PAGE_SIZE } from '@/types/live';
+import { renderWallboardMatchCourtBoard } from '@/ui/components/wallboard/WallboardMatchCourtBoard';
 
 function playerName(id: string, players: PublicPlayer[]): string {
   return players.find((p) => p.id === id)?.name ?? 'Unknown';
@@ -14,6 +15,7 @@ function buildPlayerLookup(matches: PublicMatch[], rankings: PublicRankingRow[])
     map.set(row.playerId, {
       id: row.playerId,
       name: row.name,
+      duprDoublesRating: row.duprDoublesRating,
       gamesPlayed: row.gamesPlayed,
       wins: row.wins,
       losses: row.losses,
@@ -48,11 +50,18 @@ export function renderWallboardHeader(organizerName: string, updatedAt: number):
   return header;
 }
 
+function formatMatchFormatLabel(format: string): string {
+  if (format === 'mixed_doubles') return 'Mixed doubles';
+  if (format === 'same_gender_doubles') return 'Same gender';
+  if (format === 'singles') return 'Singles';
+  return 'Doubles';
+}
+
 export function renderWallboardActiveMatches(
   matches: PublicMatch[],
   players: PublicPlayer[]
 ): HTMLElement {
-  const section = el('section', { className: 'live-wallboard__section' });
+  const section = el('section', { className: 'live-wallboard__section live-wallboard__section--active' });
   section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Active Matches']));
 
   if (matches.length === 0) {
@@ -60,28 +69,40 @@ export function renderWallboardActiveMatches(
     return section;
   }
 
-  const list = el('div', { className: 'live-wallboard__active-list' });
-  for (const match of matches) {
-    const { teamA, teamB } = splitTeams(match.playerIds);
-    const card = el('article', { className: 'live-wallboard__active-card' });
-    card.append(
-      el('div', { className: 'live-wallboard__active-meta' }, [
-        el('span', { className: 'live-wallboard__court' }, [match.courtLabel]),
-        el('span', {
-          className: 'match-timer live-wallboard__timer',
-          'data-started-at': String(match.startedAt ?? Date.now()),
-        }, [formatMatchDuration(Date.now() - (match.startedAt ?? Date.now()))]),
-      ]),
-      el('div', { className: 'live-wallboard__teams' }, [
-        el('div', { className: 'live-wallboard__team' }, [
-          el('span', { className: 'live-wallboard__team-label' }, ['Team A']),
-          el('span', {}, [teamA.map((id) => playerName(id, players)).join(' & ')]),
-        ]),
-        el('div', { className: 'live-wallboard__team' }, [
-          el('span', { className: 'live-wallboard__team-label' }, ['Team B']),
-          el('span', {}, [teamB.map((id) => playerName(id, players)).join(' & ')]),
+  const sorted = [...matches].sort((a, b) =>
+    a.courtLabel.localeCompare(b.courtLabel, undefined, { numeric: true })
+  );
+
+  const list = el('div', { className: 'live-wallboard__active-list active-match-list' });
+  for (const match of sorted) {
+    const startedAt = match.startedAt ?? Date.now();
+    const card = el('article', {
+      className: 'live-wallboard__active-card active-match-card smash-active-match-card',
+    });
+
+    const header = el('div', { className: 'active-match-card__header-bar' });
+    header.append(
+      el('div', { className: 'active-match-card__header-main' }, [
+        el('div', { className: 'active-match-card__court-name' }, [match.courtLabel]),
+        el('div', { className: 'active-match-card__header-meta' }, [
+          el('span', { className: 'active-match-card__format' }, [
+            formatMatchFormatLabel(match.format),
+          ]),
+          el('span', {
+            className: 'match-timer active-match-card__timer',
+            'data-started-at': String(startedAt),
+          }, [formatMatchDuration(Date.now() - startedAt)]),
         ]),
       ])
+    );
+
+    card.append(
+      header,
+      renderWallboardMatchCourtBoard({
+        playerIds: match.playerIds,
+        players,
+        courtLabel: match.courtLabel,
+      })
     );
     list.append(card);
   }

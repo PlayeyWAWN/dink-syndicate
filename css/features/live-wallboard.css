@@ -60,10 +60,95 @@
   gap: 0.75rem;
 }
 
+.live-wallboard__section--active {
+  padding-bottom: 1.25rem;
+}
+
+.live-wallboard .active-match-card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.live-wallboard .active-match-card__header-bar {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.live-wallboard .active-match-card__court-name {
+  color: #f8fafc;
+}
+
+.live-wallboard .active-match-card__format,
+.live-wallboard .active-match-card__timer {
+  color: rgba(248, 250, 252, 0.82);
+}
+
+.live-wallboard .match-court-board__court {
+  background: #475569;
+}
+
+.live-wallboard__player-chip--team-a {
+  background: var(--team1-label, #38bdf8);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.live-wallboard__player-chip--team-b {
+  background: var(--team2-label, #f9a8d4);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.live-wallboard .match-player-chip__name {
+  font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .live-wallboard__active-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .live-wallboard .match-court-board__court {
+    max-width: none;
+    aspect-ratio: 520 / 280;
+  }
+
+  .live-wallboard .match-court-board__pos {
+    width: min(72px, 28%);
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip {
+    min-height: 3.25rem;
+    padding: 0.3rem 0.25rem 0.35rem;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__name {
+    font-size: 0.62rem;
+    line-height: 1.15;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__meta {
+    font-size: 0.52rem;
+  }
+}
+
+@media (min-width: 1100px) {
+  .live-wallboard__active-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .live-wallboard .active-match-card__court-name {
+    font-size: 1.35rem;
+  }
+}
+
 .live-wallboard__active-card {
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 0;
+  border-radius: 16px;
+  background: transparent;
 }
 
 .live-wallboard__sponsor-grid {
