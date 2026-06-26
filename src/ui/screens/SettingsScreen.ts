@@ -20,8 +20,10 @@ import {
 } from '@/modules/session/RosterTransferService';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { useQueueUiStore } from '@/stores/queueUiStore';
 import { isAutoRotationEnabled } from '@/types/queue';
 import { useSessionStore } from '@/stores/sessionStore';
+import { mergeAppSettings } from '@/types/app-data';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
 import { appRouter } from '@/app/router';
@@ -492,7 +494,15 @@ export function renderSettingsScreen(container: HTMLElement): void {
       alert('Nothing to export.');
       return;
     }
-    downloadJson(defaultExportFilename(), serializeExport(data));
+    const ui = useQueueUiStore.getState();
+    const dataForExport = {
+      ...data,
+      settings: mergeAppSettings(data.settings, data.session.organizerName, {
+        courtFormat: ui.courtFormat,
+        matchMode: ui.matchMode,
+      }),
+    };
+    downloadJson(defaultExportFilename(), serializeExport(dataForExport));
   });
 
   const importLabel = el('label', { className: 'btn btn-secondary file-label' }, [
@@ -541,7 +551,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
       rosterActions,
       fullSessionHeading,
       el('p', { className: 'screen-lead' }, [
-        'Includes queue, active matches, session timing, and all settings. Use when moving an in-progress session between devices.',
+        'Includes queue, active matches, session timing, and all settings (game mode, Find Match penalties, court format, and more). Use when moving an in-progress session between devices.',
       ]),
       fullSessionActions,
     ],

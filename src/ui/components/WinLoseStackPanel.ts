@@ -71,10 +71,6 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       el('span', { className: 'queue-section__count' }, [
         String(stack.winnerStack.length + stack.loserStack.length),
       ]),
-    ]),
-    el('p', { className: 'screen-lead queue-section__lead' }, [
-      'Two waiting piles: first 4 check-ins start in Winners, the rest in Losers (waiting — not game losers yet). ',
-      'After each game, actual winners and losers return to the back of their pile. Next-Up alternates between piles.',
     ])
   );
 

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
 import { createId } from '@/modules/matchmaking/create-id';
+import { useSessionStore } from '@/stores/sessionStore';
+import { AppSettings } from '@/types/app-data';
 
 export interface LadderStartNotice {
   id: string;
@@ -35,6 +37,7 @@ interface QueueUiState {
   clearLadderStartNotices: () => void;
   setLadderSelectedPoolPlayer: (playerId: string | null) => void;
   clearLadderSelection: () => void;
+  hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
 export const useQueueUiStore = create<QueueUiState>((set, get) => ({
@@ -47,8 +50,14 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   excludedSectionOpen: true,
   ladderStartNotices: [],
   ladderSelectedPoolPlayerId: null,
-  setCourtFormat: (courtFormat) => set({ courtFormat, selectedPlayerIds: [] }),
-  setMatchMode: (matchMode) => set({ matchMode, selectedPlayerIds: [] }),
+  setCourtFormat: (courtFormat) => {
+    set({ courtFormat, selectedPlayerIds: [] });
+    useSessionStore.getState().updateSessionSettings({ courtFormat });
+  },
+  setMatchMode: (matchMode) => {
+    set({ matchMode, selectedPlayerIds: [] });
+    useSessionStore.getState().updateSessionSettings({ matchMode });
+  },
   toggleSelectedPlayer: (playerId) => {
     const current = get().selectedPlayerIds;
     if (current.includes(playerId)) {
@@ -80,6 +89,11 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
   setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
   clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
+  hydrateFromSettings: (settings) =>
+    set({
+      courtFormat: settings?.courtFormat ?? 'doubles',
+      matchMode: settings?.matchMode ?? 'balanced',
+    }),
 }));
 
 export type { CourtFormat, QueueMatchMode };

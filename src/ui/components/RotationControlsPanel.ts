@@ -1,6 +1,7 @@
 import { el } from '@/lib/dom-utils';
 import { useQueueStore } from '@/stores/queueStore';
 import { isAutoRotationEnabled } from '@/types/queue';
+import { renderCollapsibleHelpPanel } from '@/ui/components/CollapsibleHelpPanel';
 
 export type AutoRotationMode = 'ladder' | 'stack';
 
@@ -55,10 +56,19 @@ export function renderRotationControls(options: RotationControlsOptions): HTMLEl
     );
   } else {
     wrap.append(
-      el('p', { className: 'screen-lead rotation-controls__lead' }, [copy.manualLead]),
-      el('p', { className: 'rotation-controls__hint' }, [
-        'Tap Auto-rotation to let the app handle bench fill, player movement, and starting games using the rules above.',
-      ])
+      renderCollapsibleHelpPanel(
+        [
+          el('p', { className: 'rotation-controls__lead' }, [copy.manualLead]),
+          el('p', { className: 'rotation-controls__hint' }, [
+            'Tap Auto-rotation to let the app handle bench fill, player movement, and starting games using the rules above.',
+          ]),
+        ],
+        {
+          title: 'Manual mode & auto-rotation',
+          collapsedHint: 'Tap for rotation details',
+          className: 'collapsible-help--compact',
+        }
+      )
     );
   }
 

@@ -168,6 +168,9 @@ export const useSessionStore = create<SessionStoreState>((set, get) => ({
         availableWaitWarnMinutes: parsed.settings?.availableWaitWarnMinutes,
         availableWaitCriticalMinutes: parsed.settings?.availableWaitCriticalMinutes,
         ttsVoiceUri: parsed.settings?.ttsVoiceUri,
+        gameMode: parsed.settings?.gameMode,
+        courtFormat: parsed.settings?.courtFormat,
+        matchMode: parsed.settings?.matchMode,
       }),
     };
     localStorageService.save(merged, session.id);

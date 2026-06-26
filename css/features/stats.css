@@ -61,6 +61,7 @@
 
 .stats-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin-top: 1rem;
   font-size: 0.85rem;
@@ -72,6 +73,14 @@
   padding: 0.5rem 0.35rem;
   text-align: left;
   border-bottom: 1px solid var(--surface-border);
+  overflow: hidden;
+}
+
+.stats-table th:not(:first-child),
+.stats-table td:not(:first-child) {
+  width: 2.75rem;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .stats-rankings-search {
@@ -174,9 +183,17 @@
 .stats-export-report__player-cell {
   max-width: 0;
   width: 38%;
+  overflow: hidden;
 }
 
-.stats-table__player-inline,
+.stats-table__player-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .stats-export-report__player-inline {
   display: inline-flex;
   align-items: center;
@@ -187,6 +204,7 @@
 
 .stats-table__player-rank,
 .stats-export-report__player-rank {
+  flex-shrink: 0;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
@@ -196,7 +214,15 @@
   color: rgba(248, 250, 252, 0.72);
 }
 
-.stats-table__player-name,
+.stats-table__player-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .stats-export-report__player-name {
   font-weight: 600;
   overflow: hidden;
@@ -235,6 +261,7 @@
 }
 
 .ranking-podium-icon,
+.stats-table__podium-icon,
 .stats-export-report__podium-icon {
   display: inline-flex;
   align-items: center;

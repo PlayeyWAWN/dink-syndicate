@@ -3,6 +3,7 @@
  */
 @import './themes.css';
 @import './components/app-icons.css';
+@import './components/collapsible-help.css';
 @import './shell/layout.css';
 @import './shell/layout-forms.css';
 @import './shell/layout-settings.css';

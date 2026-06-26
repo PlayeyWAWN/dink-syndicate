@@ -1,0 +1,106 @@
+/**
+ * Collapsed-by-default help panels — queue mode descriptions, rotation hints, etc.
+ */
+
+.collapsible-help {
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--queue-accordion-bg, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--queue-accordion-border, rgba(255, 255, 255, 0.1));
+}
+
+.collapsible-help__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.collapsible-help__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-help__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.collapsible-help__chevron::before {
+  content: '';
+  display: block;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  margin-top: -0.12rem;
+  transition: transform 0.15s ease;
+}
+
+details[open] > .collapsible-help__toggle .collapsible-help__chevron::before {
+  transform: rotate(45deg);
+  margin-top: 0.12rem;
+}
+
+.collapsible-help__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.collapsible-help__hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--queue-accordion-hint, var(--text-muted));
+}
+
+details:not([open]) .collapsible-help__hint {
+  display: inline;
+}
+
+details[open] .collapsible-help__hint {
+  display: none;
+}
+
+.collapsible-help__body {
+  padding: 0 0.85rem 0.75rem;
+}
+
+.collapsible-help__body > .screen-lead:first-child,
+.collapsible-help__body > .rotation-controls__lead:first-child {
+  margin-top: 0;
+}
+
+.collapsible-help__body > .screen-lead,
+.collapsible-help__body > .rotation-controls__lead {
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.collapsible-help__body > .rotation-controls__hint:last-child {
+  margin-bottom: 0;
+}
+
+.collapsible-help--compact {
+  margin-bottom: 0.65rem;
+}
+
+.collapsible-help--compact .collapsible-help__toggle {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.collapsible-help--compact .collapsible-help__body {
+  padding: 0 0.75rem 0.65rem;
+}

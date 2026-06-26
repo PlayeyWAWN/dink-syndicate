@@ -6,6 +6,7 @@ import { isOnline, onConnectivityChange } from '@/lib/offline-utils';
 import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { useQueueUiStore } from '@/stores/queueUiStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { renderCourtsScreen } from '@/ui/screens/CourtsScreen';
 import { renderHomeScreen } from '@/ui/screens/HomeScreen';
@@ -77,8 +78,10 @@ export async function bootstrapApp(): Promise<void> {
   }
 
   await useSessionStore.getState().init();
+  const snapshot = useSessionStore.getState().loadSnapshot();
   usePlayerStore.getState().hydrate();
   useCourtStore.getState().hydrate();
   useQueueStore.getState().hydrate();
+  useQueueUiStore.getState().hydrateFromSettings(snapshot?.settings);
   renderApp();
 }

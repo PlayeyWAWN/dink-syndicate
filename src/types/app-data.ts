@@ -6,6 +6,7 @@ import { QueueStateSchema } from '@/types/queue';
 import { SessionSchema } from '@/types/session';
 import { SessionArchiveSchema } from '@/types/session-archive';
 import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
+import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
 import { DEFAULT_GAME_MODE } from '@/types/game-mode';
 
 export const APP_DATA_VERSION = 3;
@@ -52,6 +53,13 @@ export const AppSettingsSchema = z.object({
   gameMode: z
     .enum(['dupr_open_play', 'win_lose_stack', 'ladder_waterfall'])
     .default(DEFAULT_GAME_MODE)
+    .optional(),
+  /** Queue tab default court format for Create Match. */
+  courtFormat: z.enum(['doubles', 'singles'] satisfies readonly CourtFormat[]).default('doubles').optional(),
+  /** Queue tab default match mode for Create Match (doubles only). */
+  matchMode: z
+    .enum(['balanced', 'mixed_doubles', 'same_gender'] satisfies readonly QueueMatchMode[])
+    .default('balanced')
     .optional(),
 });
 
@@ -153,6 +161,8 @@ export function mergeAppSettings(
       MATCHMAKING_FAIRNESS.defaultAvailableWaitCriticalMinutes,
     ttsVoiceUri: partial?.ttsVoiceUri ?? current?.ttsVoiceUri,
     gameMode: partial?.gameMode ?? current?.gameMode ?? DEFAULT_GAME_MODE,
+    courtFormat: partial?.courtFormat ?? current?.courtFormat ?? 'doubles',
+    matchMode: partial?.matchMode ?? current?.matchMode ?? 'balanced',
   };
 }
 

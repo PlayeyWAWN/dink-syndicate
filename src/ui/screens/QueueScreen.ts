@@ -13,6 +13,7 @@ import { renderExcludedPlayersPanel } from '@/ui/components/ExcludedPlayersPanel
 import { renderRecentCompletedMatchesPanel } from '@/ui/components/RecentCompletedMatchesPanel';
 import { renderMatchQueueSection } from '@/ui/components/MatchQueueSection';
 import { renderWinLoseStackPanel } from '@/ui/components/WinLoseStackPanel';
+import { renderCollapsibleHelpPanel } from '@/ui/components/CollapsibleHelpPanel';
 import { renderLadderWaterfallPanel } from '@/ui/components/LadderWaterfallPanel';
 import { openBalanceNoticeDialog } from '@/ui/components/BalanceNoticeDialog';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
@@ -92,9 +93,21 @@ export function renderQueueScreen(container: HTMLElement): void {
 
   if (stackMode) {
     container.append(
-      el('p', { className: 'screen-lead' }, [
-        'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.',
-      ])
+      renderCollapsibleHelpPanel(
+        [
+          el('p', { className: 'screen-lead' }, [
+            'Win/Lose Stack mode — record winners on active matches; players rotate through Winners and Losers stacks automatically.',
+          ]),
+          el('p', { className: 'screen-lead' }, [
+            'Two waiting piles: first 4 check-ins start in Winners, the rest in Losers (waiting — not game losers yet). ',
+            'After each game, actual winners and losers return to the back of their pile. Next-Up alternates between piles.',
+          ]),
+        ],
+        {
+          title: 'How Win/Lose Stack works',
+          collapsedHint: 'Tap for mode details',
+        }
+      )
     );
     useQueueStore.getState().reconcileWinLoseStackState();
     const liveQueueState = useQueueStore.getState().queueState;

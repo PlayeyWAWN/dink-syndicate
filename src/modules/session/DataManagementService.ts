@@ -9,9 +9,11 @@ export const WIPE_CONFIRMATION_PHRASE = 'DELETE';
 
 /** Re-read persisted snapshot into runtime stores after import, wipe, or session lifecycle. */
 export function reloadAllStores(): void {
+  const snapshot = useSessionStore.getState().loadSnapshot();
   usePlayerStore.getState().hydrate();
   useCourtStore.getState().hydrate();
   useQueueStore.getState().hydrate();
+  useQueueUiStore.getState().hydrateFromSettings(snapshot?.settings);
   useQueueUiStore.getState().clearSelection();
   useQueueUiStore.getState().setAvailableSearchQuery('');
   useQueueUiStore.getState().setExcludedSearchQuery('');

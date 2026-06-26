@@ -42,7 +42,7 @@ export function createRankingPlayerCell(
 
   inline.append(
     el('span', { className: `${prefix}__player-rank` }, [String(rankNumber)]),
-    el('span', { className: `${prefix}__player-name` }, [name])
+    el('span', { className: `${prefix}__player-name`, title: name }, [name])
   );
 
   if (podium) {
