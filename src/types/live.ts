@@ -74,6 +74,8 @@ export const LiveSessionSnapshotSchema = z.object({
   completedMatches: z.array(PublicMatchSchema),
   rankings: z.array(PublicRankingRowSchema),
   rankingDeltas: z.record(z.enum(['up', 'down', 'same', 'new'])).default({}),
+  /** Full roster for wallboard name/skill lookup (not limited to top 10). */
+  players: z.array(PublicPlayerSchema).default([]),
   viewerStats: ViewerStatsSchema,
 });
 

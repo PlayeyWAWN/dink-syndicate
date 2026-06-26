@@ -23,8 +23,13 @@ import {
   buildManualMatch,
 } from '@/modules/queue/ManualMatchService';
 import { renderLivePublishPanel } from '@/ui/components/LivePublishPanel';
+import { livePublishService } from '@/modules/live/LivePublishService';
 export function renderQueueScreen(container: HTMLElement): void {
   clearLiveTimers(container);
+
+  if (livePublishService.isPublishEnabled()) {
+    void livePublishService.syncSnapshot();
+  }
 
   container.append(
     renderLivePublishPanel({

@@ -144,6 +144,7 @@ export function buildLiveSnapshot(input: BuildLiveSnapshotInput): LiveSessionSna
     ),
     rankings: rankingsWithDeltas,
     rankingDeltas,
+    players: input.players.filter((p) => !p.excluded).map(toPublicPlayer),
     viewerStats: input.viewerStats,
   };
 }

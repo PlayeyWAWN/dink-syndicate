@@ -1,8 +1,11 @@
 import { el } from '@/lib/dom-utils';
 import { splitTeams } from '@/lib/format-utils';
-import { formatSkillLevel, getSkillLevelFromDupr } from '@/lib/skill-utils';
 import { mountPickleballCourt } from '@/modules/courts/pickleball-court';
 import { PublicPlayer } from '@/types/live';
+import {
+  findPublicPlayer,
+  renderWallboardPlayerChip,
+} from '@/ui/components/wallboard/wallboard-player-chip';
 
 const POSITIONS = [
   { team: 'A' as const, index: 0, className: 'match-court-board__pos--tl' },
@@ -10,29 +13,6 @@ const POSITIONS = [
   { team: 'B' as const, index: 0, className: 'match-court-board__pos--tr' },
   { team: 'B' as const, index: 1, className: 'match-court-board__pos--br' },
 ];
-
-function renderWallboardPlayerChip(
-  player: PublicPlayer | undefined,
-  team: 'A' | 'B'
-): HTMLElement {
-  if (!player) {
-    return el('div', { className: 'match-player-chip match-player-chip--empty' }, ['—']);
-  }
-
-  const skill = formatSkillLevel(getSkillLevelFromDupr(player.duprDoublesRating));
-  const rating =
-    player.duprDoublesRating != null ? player.duprDoublesRating.toFixed(1) : '—';
-  const meta = `${rating} · ${skill}`;
-
-  const chip = el('div', {
-    className: `match-player-chip live-wallboard__player-chip live-wallboard__player-chip--team-${team.toLowerCase()}`,
-  });
-  chip.append(
-    el('div', { className: 'match-player-chip__name' }, [player.name]),
-    el('div', { className: 'match-player-chip__meta' }, [meta])
-  );
-  return chip;
-}
 
 export interface WallboardMatchCourtBoardOptions {
   playerIds: string[];
@@ -54,11 +34,11 @@ export function renderWallboardMatchCourtBoard(
   for (const pos of POSITIONS) {
     const ids = pos.team === 'A' ? teamA : teamB;
     const playerId = ids[pos.index];
-    const player = playerId ? players.find((p) => p.id === playerId) : undefined;
+    const player = playerId ? findPublicPlayer(players, playerId) : undefined;
     if (!player && !playerId) continue;
 
     const wrap = el('div', { className: `match-court-board__pos ${pos.className}` });
-    wrap.append(renderWallboardPlayerChip(player, pos.team));
+    wrap.append(renderWallboardPlayerChip(player, pos.team, { compact: true }));
     court.append(wrap);
   }
 

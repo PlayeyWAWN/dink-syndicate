@@ -128,6 +128,8 @@ describe('buildLiveSnapshot', () => {
     expect(snapshot.completedMatches).toHaveLength(1);
     expect(snapshot.rankings.length).toBeLessThanOrEqual(10);
     expect(snapshot.rankings[0]?.playerId).toBe('p1');
+    expect(snapshot.players).toHaveLength(4);
+    expect(snapshot.players.find((p) => p.id === 'p1')?.name).toBe('Alice');
     expect(snapshot.viewerStats.totalUnique).toBe(2);
   });
 

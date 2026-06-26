@@ -56,6 +56,7 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
     }
 
     const players = resolveWallboardPlayers(
+      snapshot.players,
       snapshot.activeMatches,
       snapshot.completedMatches,
       snapshot.rankings
@@ -71,7 +72,7 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
     if (sponsors) body.append(sponsors);
 
     body.append(
-      renderWallboardQueue(snapshot.queueNext),
+      renderWallboardQueue(snapshot.queueNext, players),
       renderWallboardRankings(snapshot.rankings),
       renderWallboardMatchHistory(
         snapshot.completedMatches,

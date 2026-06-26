@@ -4,18 +4,58 @@ import { splitTeams } from '@/lib/format-utils';
 import { paginateItems } from '@/modules/stats/MatchHistoryService';
 import { PublicMatch, PublicPlayer, PublicQueueEntry, PublicRankingRow, SponsorConfig, WALLBOARD_MATCH_HISTORY_PAGE_SIZE } from '@/types/live';
 import { renderWallboardMatchCourtBoard } from '@/ui/components/wallboard/WallboardMatchCourtBoard';
+import {
+  findPublicPlayer,
+  renderWallboardPlayerChip,
+} from '@/ui/components/wallboard/wallboard-player-chip';
 
 function playerName(id: string, players: PublicPlayer[]): string {
-  return players.find((p) => p.id === id)?.name ?? 'Unknown';
+  return findPublicPlayer(players, id)?.name ?? 'Unknown';
 }
 
-function buildPlayerLookup(matches: PublicMatch[], rankings: PublicRankingRow[]): PublicPlayer[] {
+function teamAvgGamesPublic(
+  playerIds: string[],
+  players: PublicPlayer[],
+  team: 'A' | 'B'
+): number {
+  const { teamA, teamB } = splitTeams(playerIds);
+  const ids = team === 'A' ? teamA : teamB;
+  if (ids.length === 0) return 0;
+  const total = ids.reduce(
+    (sum, id) => sum + (findPublicPlayer(players, id)?.gamesPlayed ?? 0),
+    0
+  );
+  return total / ids.length;
+}
+
+function teamTotalGamesPublic(
+  playerIds: string[],
+  players: PublicPlayer[],
+  team: 'A' | 'B'
+): number {
+  const { teamA, teamB } = splitTeams(playerIds);
+  const ids = team === 'A' ? teamA : teamB;
+  return ids.reduce(
+    (sum, id) => sum + (findPublicPlayer(players, id)?.gamesPlayed ?? 0),
+    0
+  );
+}
+
+function buildPlayerLookup(
+  snapshotPlayers: PublicPlayer[] | undefined,
+  matches: PublicMatch[],
+  rankings: PublicRankingRow[]
+): PublicPlayer[] {
   const map = new Map<string, PublicPlayer>();
+  for (const player of snapshotPlayers ?? []) {
+    map.set(player.id, { ...player });
+  }
   for (const row of rankings) {
+    const existing = map.get(row.playerId);
     map.set(row.playerId, {
       id: row.playerId,
       name: row.name,
-      duprDoublesRating: row.duprDoublesRating,
+      duprDoublesRating: row.duprDoublesRating ?? existing?.duprDoublesRating,
       gamesPlayed: row.gamesPlayed,
       wins: row.wins,
       losses: row.losses,
@@ -143,62 +183,137 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
   return section;
 }
 
-export function renderWallboardQueue(queueNext: PublicQueueEntry[]): HTMLElement {
-  const section = el('section', { className: 'live-wallboard__section' });
-  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Next in Queue']));
+export function renderWallboardQueue(
+  queueNext: PublicQueueEntry[],
+  players: PublicPlayer[]
+): HTMLElement {
+  const section = el('section', { className: 'live-wallboard__section live-wallboard__section--queue' });
+  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Up next']));
 
   if (queueNext.length === 0) {
     section.append(el('p', { className: 'live-wallboard__empty' }, ['Queue is empty.']));
     return section;
   }
 
-  const list = el('ol', { className: 'live-wallboard__queue-list' });
+  const list = el('div', { className: 'live-wallboard__queue-list match-queue-list' });
   for (const entry of queueNext) {
-    const item = el('li', { className: 'live-wallboard__queue-item' });
-    item.append(
-      el('span', { className: 'live-wallboard__queue-pos' }, [String(entry.position)]),
-      el('span', { className: 'live-wallboard__queue-label' }, [entry.label])
+    const team1Total = teamTotalGamesPublic(entry.playerIds, players, 'A');
+    const team2Total = teamTotalGamesPublic(entry.playerIds, players, 'B');
+    const { teamA, teamB } = splitTeams(entry.playerIds);
+
+    const card = el('article', { className: 'match-queue-card live-wallboard__queue-card' });
+    const row = el('div', { className: 'live-wallboard__queue-card-row' });
+    row.append(
+      el('span', { className: 'match-queue-card__number live-wallboard__queue-number' }, [
+        String(entry.position),
+      ])
     );
+
+    const body = el('div', { className: 'live-wallboard__queue-card-body' });
+    body.append(
+      el('div', { className: 'live-wallboard__queue-summary' }, [
+        `Queue · Team 1: ${team1Total}g total · Team 2: ${team2Total}g total`,
+      ])
+    );
+
+    const vsLayout = el('div', { className: 'match-queue-card__vs-layout live-wallboard__queue-vs' });
+    for (const [team, ids] of [
+      ['A', teamA] as const,
+      ['B', teamB] as const,
+    ]) {
+      if (team === 'B') {
+        vsLayout.append(el('div', { className: 'match-queue-card__vs live-wallboard__queue-vs-badge' }, ['vs']));
+      }
+      const side = el('div', { className: 'match-queue-card__team-side' });
+      side.append(
+        el('div', {
+          className: `match-queue-card__team-label match-queue-card__team-label--${team === 'A' ? 'team1' : 'team2'}`,
+        }, [team === 'A' ? 'Team 1' : 'Team 2']),
+        el('div', { className: 'match-queue-card__team-avg' }, [
+          `Avg. ${teamAvgGamesPublic(entry.playerIds, players, team).toFixed(1)} games`,
+        ])
+      );
+      const playersRow = el('div', { className: 'match-queue-card__team-players' });
+      for (const id of ids) {
+        playersRow.append(renderWallboardPlayerChip(findPublicPlayer(players, id), team));
+      }
+      side.append(playersRow);
+      vsLayout.append(side);
+    }
+    body.append(vsLayout);
+
     if (entry.queuedAt) {
-      item.append(
+      const wait = el('div', { className: 'live-wallboard__queue-wait-label' }, ['IN QUEUE ']);
+      wait.append(
         el('span', {
           className: 'match-timer live-wallboard__queue-wait',
           'data-queued-at': String(entry.queuedAt),
         }, [formatMatchDuration(Date.now() - entry.queuedAt)])
       );
+      body.append(wait);
     }
-    list.append(item);
+
+    row.append(body);
+    card.append(row);
+    list.append(card);
   }
   section.append(list);
   return section;
 }
 
-function deltaBadge(delta: PublicRankingRow['delta']): HTMLElement | null {
-  if (!delta || delta === 'same') return null;
-  const labels = { up: '↑', down: '↓', new: 'NEW' };
-  return el('span', { className: `live-wallboard__delta live-wallboard__delta--${delta}` }, [
-    labels[delta],
-  ]);
+function buildTopTenEnterAlerts(rankings: PublicRankingRow[]): string[] {
+  const hasBaseline = rankings.some((row) => row.delta && row.delta !== 'new');
+  if (!hasBaseline) return [];
+  return rankings
+    .filter((row) => row.delta === 'new')
+    .map((row) => `${row.name} enters the Top 10 at #${row.rank}`);
+}
+
+function rankBadgeClass(rank: number): string {
+  if (rank === 1) return 'live-wallboard__rank-badge--gold';
+  if (rank === 2) return 'live-wallboard__rank-badge--silver';
+  if (rank === 3) return 'live-wallboard__rank-badge--bronze';
+  return 'live-wallboard__rank-badge--default';
+}
+
+function winPct(wins: number, gamesPlayed: number): string {
+  if (gamesPlayed <= 0) return '—';
+  return `${Math.round((wins / gamesPlayed) * 100)}%`;
 }
 
 export function renderWallboardRankings(rankings: PublicRankingRow[]): HTMLElement {
-  const section = el('section', { className: 'live-wallboard__section' });
-  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Top 10 Live Rankings']));
+  const section = el('section', { className: 'live-wallboard__section live-wallboard__section--rankings' });
+  section.append(
+    el('h2', { className: 'live-wallboard__section-title' }, ['Current Top 10']),
+    el('p', { className: 'live-wallboard__section-subtitle' }, [
+      'Rankings update after each completed match.',
+    ])
+  );
 
   if (rankings.length === 0) {
     section.append(el('p', { className: 'live-wallboard__empty' }, ['No rankings yet.']));
     return section;
   }
 
+  const alerts = buildTopTenEnterAlerts(rankings);
+  if (alerts.length > 0) {
+    const alertBox = el('div', { className: 'live-wallboard__ranking-alerts' });
+    for (const message of alerts) {
+      alertBox.append(el('p', { className: 'live-wallboard__ranking-alert' }, [message]));
+    }
+    section.append(alertBox);
+  }
+
   const table = el('table', { className: 'live-wallboard__rankings' });
   const thead = el('thead');
   thead.append(
     el('tr', {}, [
-      el('th', {}, ['#']),
+      el('th', {}, ['Rank']),
       el('th', {}, ['Player']),
-      el('th', {}, ['Pts']),
-      el('th', {}, ['W-L']),
-      el('th', {}, ['']),
+      el('th', {}, ['W']),
+      el('th', {}, ['L']),
+      el('th', {}, ['Games']),
+      el('th', {}, ['Win %']),
     ])
   );
   table.append(thead);
@@ -206,18 +321,27 @@ export function renderWallboardRankings(rankings: PublicRankingRow[]): HTMLEleme
   const tbody = el('tbody');
   for (const row of rankings) {
     const tr = el('tr');
-    const delta = deltaBadge(row.delta);
     tr.append(
-      el('td', {}, [String(row.rank)]),
-      el('td', {}, [row.name]),
-      el('td', {}, [String(row.points)]),
-      el('td', {}, [`${row.wins}-${row.losses}`]),
-      el('td', {}, delta ? [delta] : [])
+      el('td', { className: 'live-wallboard__rank-cell' }, [
+        el('span', { className: `live-wallboard__rank-badge ${rankBadgeClass(row.rank)}` }, [
+          String(row.rank),
+        ]),
+      ]),
+      el('td', { className: 'live-wallboard__rank-player' }, [row.name]),
+      el('td', {}, [String(row.wins)]),
+      el('td', {}, [String(row.losses)]),
+      el('td', {}, [String(row.gamesPlayed)]),
+      el('td', {}, [winPct(row.wins, row.gamesPlayed)])
     );
     tbody.append(tr);
   }
   table.append(tbody);
   section.append(table);
+  section.append(
+    el('p', { className: 'live-wallboard__rankings-footer' }, [
+      'Keep playing and climb the Top 10!',
+    ])
+  );
   return section;
 }
 
@@ -293,11 +417,12 @@ export function renderWallboardMatchHistory(
 }
 
 export function resolveWallboardPlayers(
+  snapshotPlayers: PublicPlayer[] | undefined,
   activeMatches: PublicMatch[],
   completedMatches: PublicMatch[],
   rankings: PublicRankingRow[]
 ): PublicPlayer[] {
-  return buildPlayerLookup([...activeMatches, ...completedMatches], rankings);
+  return buildPlayerLookup(snapshotPlayers, [...activeMatches, ...completedMatches], rankings);
 }
 
 export function mountWallboardTimers(root: HTMLElement): void {
