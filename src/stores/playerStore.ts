@@ -7,6 +7,7 @@ import {
 
 import { useSessionStore } from '@/stores/sessionStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { notifyQueuePersisted } from '@/modules/live/LivePublishService';
 import { pruneSynergyPairs, pruneSynergyTeamNames } from '@/modules/matchmaking/synergyTeam';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { isLadderWaterfallMode, isWinLoseStackMode } from '@/types/game-mode';
@@ -84,6 +85,9 @@ interface PlayerStoreState {
 function persist(players: Player[]): void {
 
   useSessionStore.getState().persistSnapshot({ players });
+  if (useSessionStore.getState().session?.publishEnabled) {
+    notifyQueuePersisted();
+  }
 
 }
 

@@ -29,7 +29,7 @@ function toPublicPlayer(player: Player): PublicPlayer {
 
 function toPublicMatch(match: Match, courts: Court[], status: 'active' | 'completed'): PublicMatch {
   const court = courts.find((c) => c.id === match.courtId);
-  return {
+  const base: PublicMatch = {
     id: match.id,
     courtId: match.courtId ?? '',
     courtLabel: court?.label ?? 'Court',
@@ -37,10 +37,13 @@ function toPublicMatch(match: Match, courts: Court[], status: 'active' | 'comple
     format: match.format,
     status,
     winnerPlayerIds: match.winnerPlayerIds ?? [],
-    startedAt: match.startedAt,
-    completedAt: match.completedAt,
-    queuedAt: match.queuedAt,
   };
+
+  if (match.startedAt != null) base.startedAt = match.startedAt;
+  if (match.completedAt != null) base.completedAt = match.completedAt;
+  if (match.queuedAt != null) base.queuedAt = match.queuedAt;
+
+  return base;
 }
 
 function buildRankings(players: Player[]): PublicRankingRow[] {
@@ -118,10 +121,10 @@ export function buildLiveSnapshot(input: BuildLiveSnapshotInput): LiveSessionSna
   const rankings = buildRankings(input.players);
   const rankingDeltas = computeRankingDeltas(rankings, input.previousRankings);
 
-  const rankingsWithDeltas = rankings.map((row) => ({
-    ...row,
-    delta: rankingDeltas[row.playerId],
-  }));
+  const rankingsWithDeltas = rankings.map((row) => {
+    const delta = rankingDeltas[row.playerId];
+    return delta ? { ...row, delta } : row;
+  });
 
   return {
     sessionId: input.sessionId,

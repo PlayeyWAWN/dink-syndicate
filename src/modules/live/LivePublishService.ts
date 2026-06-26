@@ -11,6 +11,7 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore';
+import { stripUndefinedDeep } from '@/lib/firestore-sanitize';
 import { isFirebaseEnabled } from '@/config/firebase';
 import { getFirebaseFirestore } from '@/config/firebase-app';
 import { buildLiveSnapshot } from '@/modules/live/buildLiveSnapshot';
@@ -43,6 +44,17 @@ let viewerCountCallback: ((count: number) => void) | null = null;
 function getDb() {
   if (!isFirebaseEnabled()) return null;
   return getFirebaseFirestore();
+}
+
+async function writeLiveSession(token: string, snapshot: LiveSessionSnapshot): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+
+  await setDoc(
+    doc(db, FIRESTORE_PATHS.liveSession(token)),
+    stripUndefinedDeep(snapshot)
+  );
+  lastSyncedAt = Date.now();
 }
 
 function getOrganizerName(): string {
@@ -133,8 +145,12 @@ export const livePublishService = {
       viewerStats,
     });
 
-    await setDoc(doc(db, FIRESTORE_PATHS.liveSession(token)), snapshot);
-    lastSyncedAt = Date.now();
+    try {
+      await writeLiveSession(token, snapshot);
+    } catch (error) {
+      console.error('[LivePublish] Failed to publish wallboard snapshot', error);
+      return { ok: false, message: 'Could not publish to Firestore. Check the console for details.' };
+    }
 
     await appAnalyticsService.setPublishEnabled(true);
     await appAnalyticsService.incrementPublishSessionsStarted();
@@ -210,8 +226,11 @@ export const livePublishService = {
     });
 
     previousRankings = snapshot.rankings;
-    await setDoc(ref, snapshot);
-    lastSyncedAt = Date.now();
+    try {
+      await writeLiveSession(token, snapshot);
+    } catch (error) {
+      console.error('[LivePublish] Failed to sync wallboard snapshot', error);
+    }
   },
 
   subscribeViewerCount(token: string, callback: (count: number) => void): Unsubscribe {
@@ -255,7 +274,6 @@ export const livePublishService = {
     if (count > data.viewerStats.peakConcurrent) {
       await updateDoc(ref, {
         'viewerStats.peakConcurrent': count,
-        updatedAt: Date.now(),
       });
     }
   },
