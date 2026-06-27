@@ -19,11 +19,12 @@ export const sponsorConfigService = {
     const snap = await getDoc(doc(db, FIRESTORE_PATHS.appConfigGlobal));
     if (!snap.exists()) return DEFAULT_CONFIG;
 
-    return SponsorConfigSchema.parse({
+    const parsed = SponsorConfigSchema.safeParse({
       sponsorsEnabled: snap.data().sponsorsEnabled ?? false,
       sponsors: snap.data().sponsors ?? [],
       updatedAt: snap.data().updatedAt ?? Date.now(),
     });
+    return parsed.success ? parsed.data : DEFAULT_CONFIG;
   },
 
   subscribe(callback: (config: SponsorConfig) => void): Unsubscribe {
@@ -43,13 +44,12 @@ export const sponsorConfigService = {
         callback(DEFAULT_CONFIG);
         return;
       }
-      callback(
-        SponsorConfigSchema.parse({
-          sponsorsEnabled: snap.data().sponsorsEnabled ?? false,
-          sponsors: snap.data().sponsors ?? [],
-          updatedAt: snap.data().updatedAt ?? Date.now(),
-        })
-      );
+      const parsed = SponsorConfigSchema.safeParse({
+        sponsorsEnabled: snap.data().sponsorsEnabled ?? false,
+        sponsors: snap.data().sponsors ?? [],
+        updatedAt: snap.data().updatedAt ?? Date.now(),
+      });
+      callback(parsed.success ? parsed.data : DEFAULT_CONFIG);
     });
   },
 

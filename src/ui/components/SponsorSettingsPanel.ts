@@ -9,6 +9,13 @@ import { SponsorConfig, SponsorEntry } from '@/types/live';
 
 const MAX_SPONSORS = 18;
 
+function normalizeLinkUrl(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export function renderSponsorSettingsPanel(): HTMLElement | null {
   const session = useSessionStore.getState().session;
   if (!isAppOwner(session)) return null;
@@ -93,7 +100,7 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
         ...sponsor,
         name,
         logoUrl,
-        linkUrl: linkInput.value.trim() || undefined,
+        linkUrl: normalizeLinkUrl(linkInput.value),
       };
       await saveConfig();
       renderPreview();

@@ -8,6 +8,10 @@ import {
   findPublicPlayer,
   renderWallboardPlayerChip,
 } from '@/ui/components/wallboard/wallboard-player-chip';
+import {
+  processWallboardRankAlerts,
+  WallboardRankAlert,
+} from '@/ui/components/wallboard/wallboard-rank-alerts';
 
 function playerName(id: string, players: PublicPlayer[]): string {
   return findPublicPlayer(players, id)?.name ?? 'Unknown';
@@ -150,6 +154,13 @@ export function renderWallboardActiveMatches(
   return section;
 }
 
+function normalizeSponsorHref(linkUrl: string | undefined): string | undefined {
+  const trimmed = linkUrl?.trim();
+  if (!trimmed) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | null {
   if (!config.sponsorsEnabled || config.sponsors.length === 0) return null;
 
@@ -165,10 +176,11 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
       loading: 'lazy',
     });
 
-    if (sponsor.linkUrl) {
+    const href = normalizeSponsorHref(sponsor.linkUrl);
+    if (href) {
       const link = el('a', {
         className: 'live-wallboard__sponsor-link',
-        href: sponsor.linkUrl,
+        href,
         target: '_blank',
         rel: 'noopener noreferrer',
       });
@@ -262,11 +274,22 @@ export function renderWallboardQueue(
 }
 
 function buildTopTenEnterAlerts(rankings: PublicRankingRow[]): string[] {
-  const hasBaseline = rankings.some((row) => row.delta && row.delta !== 'new');
-  if (!hasBaseline) return [];
-  return rankings
-    .filter((row) => row.delta === 'new')
-    .map((row) => `${row.name} enters the Top 10 at #${row.rank}`);
+  return processWallboardRankAlerts(rankings).map((alert) => alert.message);
+}
+
+export function renderWallboardRankAlertOverlay(alerts: WallboardRankAlert[]): HTMLElement | null {
+  if (alerts.length === 0) return null;
+
+  const overlay = el('div', { className: 'live-wallboard__rank-overlay' });
+  for (const alert of alerts) {
+    overlay.append(
+      el('div', { className: 'live-wallboard__rank-overlay-card' }, [
+        el('span', { className: 'live-wallboard__rank-overlay-icon' }, ['🏆']),
+        el('p', { className: 'live-wallboard__rank-overlay-message' }, [alert.message]),
+      ])
+    );
+  }
+  return overlay;
 }
 
 function rankBadgeClass(rank: number): string {
@@ -351,8 +374,10 @@ export function renderWallboardMatchHistory(
   onPageChange: (page: number) => void,
   currentPage: number
 ): HTMLElement {
-  const section = el('section', { className: 'live-wallboard__section' });
-  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Match History']));
+  const section = el('section', {
+    className: 'live-wallboard__section live-wallboard__section--history',
+  });
+  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Recent results']));
 
   if (completedMatches.length === 0) {
     section.append(el('p', { className: 'live-wallboard__empty' }, ['No completed matches yet.']));
@@ -371,19 +396,34 @@ export function renderWallboardMatchHistory(
     const winners = new Set(match.winnerPlayerIds);
     const winnerIsA = teamA.length > 0 && teamA.every((id) => winners.has(id));
     const winnerIsB = teamB.length > 0 && teamB.every((id) => winners.has(id));
-    const winnerLabel = winnerIsA
+    const winnerTeam = winnerIsA ? 'A' : winnerIsB ? 'B' : null;
+    const winnerNames = winnerTeam === 'A'
       ? teamA.map((id) => playerName(id, players)).join(' & ')
-      : winnerIsB
+      : winnerTeam === 'B'
         ? teamB.map((id) => playerName(id, players)).join(' & ')
         : '—';
+    const loserNames = winnerTeam === 'A'
+      ? teamB.map((id) => playerName(id, players)).join(' & ')
+      : winnerTeam === 'B'
+        ? teamA.map((id) => playerName(id, players)).join(' & ')
+        : '—';
+    const winnerLabel = winnerTeam === 'A' ? 'Team 1' : winnerTeam === 'B' ? 'Team 2' : 'Match';
+    const finishedAt = match.completedAt
+      ? new Date(match.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : null;
 
     const card = el('article', { className: 'live-wallboard__history-card' });
     card.append(
-      el('div', { className: 'live-wallboard__history-label' }, [
-        `${teamA.map((id) => playerName(id, players)).join(' & ')} vs ${teamB.map((id) => playerName(id, players)).join(' & ')}`,
+      el('p', { className: 'live-wallboard__history-winner' }, [
+        `${winnerLabel} wins: ${winnerNames}`,
       ]),
-      el('div', { className: 'live-wallboard__history-winner' }, [`Winner: ${winnerLabel}`])
+      el('p', { className: 'live-wallboard__history-defeated' }, [`Defeated: ${loserNames}`])
     );
+    if (finishedAt) {
+      card.append(
+        el('p', { className: 'live-wallboard__history-time' }, [`Finished ${finishedAt}`])
+      );
+    }
     list.append(card);
   }
 
@@ -438,4 +478,8 @@ export function mountWallboardTimers(root: HTMLElement): void {
   };
   tickClock();
   window.setInterval(tickClock, 1000);
+}
+
+export function processRankingsForWallboard(rankings: PublicRankingRow[]): WallboardRankAlert[] {
+  return processWallboardRankAlerts(rankings);
 }
