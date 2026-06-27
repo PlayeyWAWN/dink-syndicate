@@ -28,6 +28,7 @@
 @import './features/stats-analytics.css';
 @import './features/auth.css';
 @import './features/live-wallboard.css';
+@import './features/live-wallboard-panels.css';
 @import './features/live-publish.css';
 @import './features/sponsor-settings.css';
 @import './features/admin-dashboard.css';
