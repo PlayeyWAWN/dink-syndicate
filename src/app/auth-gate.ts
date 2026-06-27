@@ -7,6 +7,8 @@ import { useQueueUiStore } from '@/stores/queueUiStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { Session } from '@/types/session';
 import { mountAuthOverlay, AuthOverlayController } from '@/ui/components/AuthOverlay';
+import { appAnalyticsService } from '@/modules/analytics/AppAnalyticsService';
+import { onAppSignOut } from '@/app/bootstrap';
 
 let authOverlay: AuthOverlayController | null = null;
 
@@ -17,6 +19,7 @@ async function hydrateStoresForSession(session: Session): Promise<void> {
   useCourtStore.getState().hydrate();
   useQueueStore.getState().hydrate();
   useQueueUiStore.getState().hydrateFromSettings(snapshot?.settings);
+  await appAnalyticsService.onAuthSession(session);
 }
 
 /**
@@ -40,6 +43,7 @@ export async function runFirebaseAuthGate(onAuthenticated: () => void): Promise<
         await hydrateStoresForSession(session);
         onAuthenticated();
       } else {
+        await onAppSignOut();
         useSessionStore.getState().clearSession();
         authOverlay?.show();
       }

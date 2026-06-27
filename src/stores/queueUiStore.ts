@@ -19,8 +19,10 @@ interface QueueUiState {
   excludedSearchQuery: string;
   availableSectionOpen: boolean;
   excludedSectionOpen: boolean;
+  liveWallboardSectionOpen: boolean;
   ladderStartNotices: LadderStartNotice[];
   ladderSelectedPoolPlayerId: string | null;
+  stackSelectedPlayerIds: string[];
   setCourtFormat: (format: CourtFormat) => void;
   setMatchMode: (mode: QueueMatchMode) => void;
   toggleSelectedPlayer: (playerId: string) => void;
@@ -29,6 +31,7 @@ interface QueueUiState {
   setExcludedSearchQuery: (query: string) => void;
   setAvailableSectionOpen: (open: boolean) => void;
   setExcludedSectionOpen: (open: boolean) => void;
+  setLiveWallboardSectionOpen: (open: boolean) => void;
   pushLadderStartNotices: (
     notices: Array<Pick<LadderStartNotice, 'courtLabel' | 'playerNames'>>
   ) => void;
@@ -37,6 +40,10 @@ interface QueueUiState {
   clearLadderStartNotices: () => void;
   setLadderSelectedPoolPlayer: (playerId: string | null) => void;
   clearLadderSelection: () => void;
+  toggleStackSelectedPlayer: (playerId: string, dueStackIds: string[]) => void;
+  setStackSelectedPlayerIds: (ids: string[]) => void;
+  clearStackSelection: () => void;
+  syncStackDefaultSelection: (dueStackIds: string[]) => void;
   hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
@@ -47,9 +54,11 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   availableSearchQuery: '',
   excludedSearchQuery: '',
   availableSectionOpen: true,
-  excludedSectionOpen: true,
+  excludedSectionOpen: false,
+  liveWallboardSectionOpen: false,
   ladderStartNotices: [],
   ladderSelectedPoolPlayerId: null,
+  stackSelectedPlayerIds: [],
   setCourtFormat: (courtFormat) => {
     set({ courtFormat, selectedPlayerIds: [] });
     useSessionStore.getState().updateSessionSettings({ courtFormat });
@@ -71,6 +80,7 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   setExcludedSearchQuery: (excludedSearchQuery) => set({ excludedSearchQuery }),
   setAvailableSectionOpen: (availableSectionOpen) => set({ availableSectionOpen }),
   setExcludedSectionOpen: (excludedSectionOpen) => set({ excludedSectionOpen }),
+  setLiveWallboardSectionOpen: (liveWallboardSectionOpen) => set({ liveWallboardSectionOpen }),
   pushLadderStartNotices: (notices) => {
     if (notices.length === 0) return;
     const now = Date.now();
@@ -89,6 +99,20 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
   setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
   clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
+  toggleStackSelectedPlayer: (playerId, dueStackIds) => {
+    if (!dueStackIds.includes(playerId)) return;
+    const current = get().stackSelectedPlayerIds;
+    if (current.includes(playerId)) {
+      set({ stackSelectedPlayerIds: current.filter((id) => id !== playerId) });
+      return;
+    }
+    if (current.length >= 4) return;
+    set({ stackSelectedPlayerIds: [...current, playerId] });
+  },
+  setStackSelectedPlayerIds: (stackSelectedPlayerIds) => set({ stackSelectedPlayerIds }),
+  clearStackSelection: () => set({ stackSelectedPlayerIds: [] }),
+  syncStackDefaultSelection: (dueStackIds) =>
+    set({ stackSelectedPlayerIds: dueStackIds.slice(0, 4) }),
   hydrateFromSettings: (settings) => {
     const courtFormat: CourtFormat =
       settings?.courtFormat === 'singles' ? 'singles' : 'doubles';

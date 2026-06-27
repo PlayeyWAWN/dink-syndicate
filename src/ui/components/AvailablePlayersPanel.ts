@@ -2,16 +2,20 @@ import { el } from '@/lib/dom-utils';
 import { formatMatchDuration } from '@/lib/match-timer';
 import { formatDuprRating } from '@/lib/format-utils';
 import { filterPlayersBySearch } from '@/lib/queue-player-search';
-import { createAppIcon } from '@/ui/icons/app-icons';
+import { createAppIcon, genderAppIconId, mountAppIcon } from '@/ui/icons/app-icons';
 import { playerActionIconHtml } from '@/ui/icons/player-action-icons';
 import { renderQueuePlayerSearch } from '@/ui/components/QueuePlayerSearch';
 import { useQueueUiStore } from '@/stores/queueUiStore';
+import { getSynergyPartnerName } from '@/ui/components/SynergyTeamModal';
 import { Player } from '@/types/player';
 
 export interface AvailablePlayersPanelOptions {
   waitThresholds?: { warnMinutes: number; criticalMinutes: number };
   selectedPlayerIds?: string[];
   requiredCount?: number;
+  synergyPairs?: Array<[string, string]>;
+  synergyTeamsEnabled?: boolean;
+  rosterPlayers?: Player[];
   onPlayerTap?: (playerId: string) => void;
   onPausePlayer?: (playerId: string) => void;
   onClearSelection?: () => void;
@@ -26,13 +30,16 @@ function renderAvailablePlayersGrid(
   > &
     Pick<
       AvailablePlayersPanelOptions,
-      'onPlayerTap' | 'onPausePlayer'
+      'onPlayerTap' | 'onPausePlayer' | 'synergyPairs' | 'synergyTeamsEnabled' | 'rosterPlayers'
     >
 ): void {
   const {
     selectedPlayerIds = [],
     onPlayerTap,
     onPausePlayer,
+    synergyPairs = [],
+    synergyTeamsEnabled = false,
+    rosterPlayers = players,
   } = options;
   const selectedSet = new Set(selectedPlayerIds);
   const manualMode = Boolean(onPlayerTap);
@@ -73,14 +80,34 @@ function renderAvailablePlayersGrid(
           }
         : {}),
     });
-    const genderLabel = player.gender === 'female' ? 'F' : 'M';
     const top = el('div', { className: 'available-player-card__top' });
     if (isSelected) {
       top.append(createAppIcon('check', 'available-player-card__selected-mark'));
     }
+    const avatar = el('span', {
+      className: `available-player-card__avatar available-player-card__avatar--${player.gender}`,
+      'aria-hidden': 'true',
+    });
+    mountAppIcon(avatar, genderAppIconId(player.gender));
     top.append(
-      el('span', { className: 'available-player-card__gender' }, [genderLabel]),
-      el('strong', { className: 'available-player-card__name' }, [player.name]),
+      avatar,
+      el('strong', { className: 'available-player-card__name' }, [player.name])
+    );
+
+    const partnerName =
+      synergyTeamsEnabled && getSynergyPartnerName(player.id, rosterPlayers, synergyPairs);
+    if (partnerName) {
+      const synergyMark = el('span', {
+        className: 'available-player-card__synergy-mark',
+        title: `Synergy partner: ${partnerName}`,
+        role: 'img',
+        'aria-label': `Synergy partner: ${partnerName}`,
+      });
+      mountAppIcon(synergyMark, 'synergy');
+      top.append(synergyMark);
+    }
+
+    top.append(
       el('span', {
         className: 'available-player-card__wait match-timer',
         'data-available-since': String(availableSince),
@@ -138,6 +165,9 @@ export function renderAvailablePlayersPanel(
     waitThresholds,
     selectedPlayerIds = [],
     requiredCount = 4,
+    synergyPairs = [],
+    synergyTeamsEnabled = false,
+    rosterPlayers = [],
     onPlayerTap,
     onPausePlayer,
     onClearSelection,
@@ -243,6 +273,9 @@ export function renderAvailablePlayersPanel(
   const gridOptions = {
     selectedPlayerIds,
     requiredCount,
+    synergyPairs,
+    synergyTeamsEnabled,
+    rosterPlayers: rosterPlayers.length > 0 ? rosterPlayers : players,
     onPlayerTap,
     onPausePlayer,
   };

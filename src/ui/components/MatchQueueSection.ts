@@ -3,24 +3,25 @@ import { createMatchErrorMessage, allCourtsOccupiedMessage, COURT_FORMATS, QUEUE
 import { pickleballIconHtml } from '@/ui/icons/pickleball-icon';
 import { useQueueUiStore } from '@/stores/queueUiStore';
 import { useQueueStore } from '@/stores/queueStore';
-import { usePlayerStore } from '@/stores/playerStore';
 import { useCourtStore } from '@/stores/courtStore';
 import { appRouter } from '@/app/router';
 import { renderQueueList } from '@/ui/components/QueueList';
 import { openQueuePlayerEditDialog } from '@/ui/components/QueuePlayerEditDialog';
+import { SynergyDisplayOptions } from '@/ui/components/SynergyTeamModal';
 import type { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
+import { Player } from '@/types/player';
 
 export interface MatchQueueSectionOptions {
   courtFormat: CourtFormat;
   matchMode: QueueMatchMode;
-  availableCount: number;
-  queueLength: number;
   openCourtCount: number;
+  players: Player[];
+  synergy?: SynergyDisplayOptions;
   onNavigate?: () => void;
 }
 
 /**
- * Match queue section: stat cards, court format/mode toggles, queue list, create-match button.
+ * Match queue section: court format/mode toggles, queue list, create-match button.
  */
 export function renderMatchQueueSection(options: MatchQueueSectionOptions): {
   section: HTMLElement;
@@ -29,9 +30,9 @@ export function renderMatchQueueSection(options: MatchQueueSectionOptions): {
   const {
     courtFormat,
     matchMode,
-    availableCount,
-    queueLength,
     openCourtCount,
+    players,
+    synergy,
     onNavigate = () => appRouter.navigate('queue'),
   } = options;
 
@@ -45,41 +46,8 @@ export function renderMatchQueueSection(options: MatchQueueSectionOptions): {
     swapQueuePlayers,
     replaceQueuePlayer,
   } = useQueueStore.getState();
-  const players = usePlayerStore.getState().players;
 
   const matchQueueSection = el('section', { className: 'queue-section queue-section--waiting' });
-  matchQueueSection.append(
-    el('div', { className: 'queue-section__header' }, [
-      el('h2', { className: 'queue-section__title' }, ['Match Queue']),
-      el('span', { className: 'queue-section__count' }, [String(queueLength)]),
-    ])
-  );
-
-  const statsRow = el('div', { className: 'stat-grid queue-section__stats queue-stat-grid' });
-  statsRow.append(
-    el('div', {
-      className: 'stat-card queue-stat-card',
-      title: 'Checked-in players on standby — ready to be queued, not waiting in line',
-    }, [
-      el('strong', {}, [String(availableCount)]),
-      el('span', {}, ['Available Players']),
-    ]),
-    el('div', {
-      className: 'stat-card queue-stat-card',
-      title: 'Matches created and waiting for an open court',
-    }, [
-      el('strong', {}, [String(queueLength)]),
-      el('span', {}, ['Waiting in queue']),
-    ]),
-    el('div', {
-      className: 'stat-card queue-stat-card',
-      title: 'Courts with no active match',
-    }, [
-      el('strong', {}, [String(openCourtCount)]),
-      el('span', {}, ['Open courts']),
-    ])
-  );
-  matchQueueSection.append(statsRow);
 
   const formatRow = el('div', { className: 'queue-mode-row' });
   formatRow.append(el('span', { className: 'queue-mode-row__label' }, ['Court format']));
@@ -178,6 +146,7 @@ export function renderMatchQueueSection(options: MatchQueueSectionOptions): {
       entries: queueState.queue,
       players,
       hasOpenCourt: openCourtCount > 0,
+      synergy,
       onNoOpenCourts: notifyAllCourtsOccupied,
       onRemove: (id) => {
         removeFromQueue(id);
@@ -206,14 +175,18 @@ export function renderMatchQueueSection(options: MatchQueueSectionOptions): {
           available: getAvailablePlayers(),
           onSwap: (otherPlayerId) => {
             if (!swapQueuePlayers(entryId, playerId, otherPlayerId)) {
-              alert('Could not swap — gender rules for this match mode may block that lineup.');
+              alert(
+                'Could not swap — check gender rules, Synergy Team locks, or player availability.'
+              );
               return;
             }
             onNavigate();
           },
           onReplace: (newPlayerId) => {
             if (!replaceQueuePlayer(entryId, playerId, newPlayerId)) {
-              alert('Could not replace — check gender rules and player availability.');
+              alert(
+                'Could not replace — check gender rules, Synergy Team locks, or player availability.'
+              );
               return;
             }
             onNavigate();

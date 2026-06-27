@@ -1,4 +1,5 @@
 import { DEFAULT_ORGANIZER_NAME, STORAGE_KEYS } from '@/config/constants';
+import { normalizeOrganizerName } from '@/modules/auth/deriveOrganizerName';
 import type { AuthProvider } from '@/modules/auth/AuthProvider';
 import { Session, SessionSchema, Unsubscribe } from '@/types/session';
 
@@ -67,7 +68,7 @@ export class LocalSessionService implements AuthProvider {
     if (!this.session) {
       throw new Error('No active session');
     }
-    const trimmed = name.trim() || DEFAULT_ORGANIZER_NAME;
+    const trimmed = normalizeOrganizerName(name);
     this.session = SessionSchema.parse({
       ...this.session,
       organizerName: trimmed,

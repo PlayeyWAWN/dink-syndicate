@@ -1,0 +1,136 @@
+/* —— Synergy Team (Players tab + modal) —— */
+
+.players-synergy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.players-synergy-bar__info {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.players-synergy-bar__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.players-synergy-bar__checkbox {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent-primary, #38bdf8);
+  cursor: pointer;
+}
+
+.players-synergy-bar__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+.players-synergy-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.players-synergy-bar__count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.synergy-team-modal__form {
+  min-width: min(100%, 22rem);
+}
+
+.synergy-team-modal__list {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.synergy-team-modal__team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.45rem;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.synergy-team-modal__team-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.synergy-team-modal__remove-btn {
+  flex-shrink: 0;
+}
+
+.synergy-team-modal__field {
+  margin-bottom: 0.65rem;
+}
+
+.synergy-team-modal__select {
+  width: 100%;
+}
+
+.match-player-chip__name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  max-width: 100%;
+}
+
+.match-player-chip__name-row .match-player-chip__name {
+  min-width: 0;
+}
+
+.match-player-chip__synergy-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: #e0f2fe;
+  opacity: 0.95;
+}
+
+.match-player-chip__synergy-mark.app-icon svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.available-player-card__synergy-mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  color: #7dd3fc;
+}
+
+.available-player-card__synergy-mark.app-icon svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}

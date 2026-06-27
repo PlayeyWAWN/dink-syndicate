@@ -34,6 +34,7 @@ import { renderAppInformationPanel } from '@/ui/components/AppInformationPanel';
 import { renderAccountSettingsPanel } from '@/ui/components/AccountSettingsPanel';
 import { renderDataManagementPanel } from '@/ui/components/DataManagementPanel';
 import { renderGameModeSettingsSection } from '@/ui/components/GameModeSettingsPanel';
+import { renderSponsorSettingsPanel } from '@/ui/components/SponsorSettingsPanel';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
 
 function reloadStoresAfterSessionChange(): void {
@@ -98,16 +99,36 @@ export function renderSettingsScreen(container: HTMLElement): void {
     className: 'settings-input',
   }) as HTMLInputElement;
   const orgSave = el('button', { type: 'button', className: 'btn' }, ['Save name']);
+  orgInput.addEventListener('input', () => {
+    if (orgInput.value.trim().length === 0) {
+      orgSave.setAttribute('disabled', 'true');
+    } else {
+      orgSave.removeAttribute('disabled');
+    }
+  });
+  if (orgInput.value.trim()) {
+    orgSave.removeAttribute('disabled');
+  }
   orgSave.addEventListener('click', () => {
+    if (!orgInput.value.trim()) return;
     useSessionStore.getState().setOrganizerName(orgInput.value);
     appRouter.navigate('settings');
   });
 
-  const orgSection = renderSettingsCollapsibleSection([orgInput, orgSave], {
-    title: 'Organizer',
-    open: settingsUi.organizerSectionOpen,
-    onToggle: (open) => useSettingsUiStore.getState().setOrganizerSectionOpen(open),
-  });
+  const orgSection = renderSettingsCollapsibleSection(
+    [
+      orgInput,
+      el('p', { className: 'settings-help' }, [
+        'Shown on your live wallboard and in admin reports. Required.',
+      ]),
+      orgSave,
+    ],
+    {
+      title: 'Organizer',
+      open: settingsUi.organizerSectionOpen,
+      onToggle: (open) => useSettingsUiStore.getState().setOrganizerSectionOpen(open),
+    }
+  );
 
   const gameModeSection = renderGameModeSettingsSection();
 
@@ -572,4 +593,9 @@ export function renderSettingsScreen(container: HTMLElement): void {
     renderDataManagementPanel(),
     renderAppInformationPanel()
   );
+
+  const sponsorPanel = renderSponsorSettingsPanel();
+  if (sponsorPanel) {
+    container.insertBefore(sponsorPanel, container.children[1] ?? null);
+  }
 }

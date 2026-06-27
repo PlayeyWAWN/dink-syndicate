@@ -31,6 +31,8 @@ describe('session-settings-export', () => {
     expect(summary.availableWaitWarnMinutes).toBe(12);
     expect(summary.availableWaitCriticalMinutes).toBe(18);
     expect(summary.autoRotationEnabled).toBeNull();
+    expect(summary.synergyTeamsEnabled).toBe(false);
+    expect(summary.synergyPairCount).toBe(0);
   });
 
   it('includes auto-rotation state for stack and ladder modes', () => {

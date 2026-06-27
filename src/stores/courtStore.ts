@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { DEFAULT_ORGANIZER_NAME } from '@/config/constants';
 import { courtService } from '@/modules/courts/CourtService';
 import { useSessionStore } from '@/stores/sessionStore';
+import { notifyQueuePersisted } from '@/modules/live/LivePublishService';
 import { Court } from '@/types/court';
 
 interface CourtStoreState {
@@ -28,6 +29,9 @@ function persistCourts(courts: Court[]): void {
         DEFAULT_ORGANIZER_NAME,
     },
   });
+  if (session.session?.publishEnabled) {
+    notifyQueuePersisted();
+  }
 }
 
 export const useCourtStore = create<CourtStoreState>((set, get) => ({

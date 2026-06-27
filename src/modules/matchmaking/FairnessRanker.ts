@@ -2,6 +2,7 @@ import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
 import { Player } from '@/types/player';
 import { duprDoublesRating, duprSinglesRating } from '@/modules/matchmaking/dupr-ratings';
 import { MatchmakingContext, SessionSettings } from '@/modules/matchmaking/types';
+import { getSynergyConfig } from '@/modules/matchmaking/synergyTeam';
 
 /** Games-played gate, arrival penalty, and candidate ordering for Find Match. */
 export class FairnessRanker {
@@ -15,6 +16,7 @@ export class FairnessRanker {
         MATCHMAKING_FAIRNESS.defaultArrivalPenaltyEnabled,
       lateMinutesWeight:
         sessionSettings?.lateMinutesWeight ?? MATCHMAKING_FAIRNESS.lateMinutesWeight,
+      synergy: getSynergyConfig(sessionSettings),
     };
   }
 

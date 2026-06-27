@@ -23,7 +23,7 @@ const AUTO_ROTATION_COPY: Record<
   },
   stack: {
     manualLead:
-      'Manual mode — record winners on active matches and use Start next game when the Next-Up stack is ready.',
+      'Manual mode — tap players in the Next-Up stack to pick the lineup (up to 4), reorder with arrows, then use Start next game.',
     autoLead: 'Auto-rotation is on.',
     autoDetail:
       'Routes winners and losers to their stacks after each game, alternates Next-Up between Winners and Losers piles, shuffles partners, and starts the next game when four players are ready.',

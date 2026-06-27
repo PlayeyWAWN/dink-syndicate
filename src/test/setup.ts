@@ -1,5 +1,16 @@
 import '@testing-library/jest-dom';
 
+jest.mock('@/config/firebase', () => ({
+  isFirebaseEnabled: jest.fn(() => false),
+  getFirebaseConfig: jest.fn(() => null),
+}));
+
+jest.mock('@/config/firebase-app', () => ({
+  getFirebaseAuth: jest.fn(() => null),
+  getFirebaseFirestore: jest.fn(() => null),
+  getFirebaseStorage: jest.fn(() => null),
+}));
+
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
   return {

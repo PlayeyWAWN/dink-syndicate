@@ -5,6 +5,12 @@ import { duprDoublesRating, duprSinglesRating } from '@/modules/matchmaking/dupr
 import { fairnessRanker, FairnessRanker } from '@/modules/matchmaking/FairnessRanker';
 import { searchMixedWithGamesGate, searchWithGamesGate } from '@/modules/matchmaking/gamesGate';
 import {
+  filterValidTeamSplits,
+  isQuartetSynergySelectionValid,
+  isSynergyActive,
+  pairsFullyInQuartet,
+} from '@/modules/matchmaking/synergyTeam';
+import {
   BalancedPairResult,
   BalancedQuartetResult,
   MatchmakingContext,
@@ -94,19 +100,12 @@ export function balanceMixedDoublesTeams(players: Player[]): string[] {
   return [m1.id, f2.id, m2.id, f1.id];
 }
 
-function mixedTeamsFromIds(quartet: Player[], playerIds: string[]): [Player[], Player[]] {
-  const byId = new Map(quartet.map((player) => [player.id, player]));
-  return [
-    [byId.get(playerIds[0])!, byId.get(playerIds[1])!],
-    [byId.get(playerIds[2])!, byId.get(playerIds[3])!],
-  ];
-}
-
 function findBestBalancedMixedQuartet(
   malePool: Player[],
   femalePool: Player[],
   context: MatchmakingContext,
-  ranker: FairnessRanker
+  ranker: FairnessRanker,
+  availableIds: Set<string>
 ): BalancedQuartetResult | null {
   let best: BalancedQuartetResult | null = null;
 
@@ -115,17 +114,26 @@ function findBestBalancedMixedQuartet(
       for (let k = 0; k < femalePool.length - 1; k += 1) {
         for (let l = k + 1; l < femalePool.length; l += 1) {
           const quartet = [malePool[i], malePool[j], femalePool[k], femalePool[l]];
-          const playerIds = balanceMixedDoublesTeams(quartet);
-          const [team1, team2] = mixedTeamsFromIds(quartet, playerIds);
-          if (!isDuprMatchBalanced(team1, team2)) continue;
+          const quartetIds = quartet.map((player) => player.id);
 
-          const finalScore = scoreQuartet(quartet, team1, team2, context, ranker);
-          if (!best || finalScore < best.score) {
-            best = {
-              teamA: [team1[0].id, team1[1].id],
-              teamB: [team2[0].id, team2[1].id],
-              score: finalScore,
-            };
+          if (
+            isSynergyActive(context.synergy) &&
+            !isQuartetSynergySelectionValid(quartetIds, availableIds, context.synergy.pairs)
+          ) {
+            continue;
+          }
+
+          for (const [team1, team2] of mixedTeamSplitsForQuartet(quartet, context)) {
+            if (!isDuprMatchBalanced(team1, team2)) continue;
+
+            const finalScore = scoreQuartet(quartet, team1, team2, context, ranker);
+            if (!best || finalScore < best.score) {
+              best = {
+                teamA: [team1[0].id, team1[1].id],
+                teamB: [team2[0].id, team2[1].id],
+                score: finalScore,
+              };
+            }
           }
         }
       }
@@ -139,20 +147,36 @@ function tryMixedQuartetFromTopPriority(
   malePool: Player[],
   femalePool: Player[],
   context: MatchmakingContext,
-  ranker: FairnessRanker
+  ranker: FairnessRanker,
+  availableIds: Set<string>
 ): BalancedQuartetResult | null {
   if (malePool.length < 2 || femalePool.length < 2) return null;
 
   const quartet = [malePool[0], malePool[1], femalePool[0], femalePool[1]];
-  const playerIds = balanceMixedDoublesTeams(quartet);
-  const [team1, team2] = mixedTeamsFromIds(quartet, playerIds);
-  if (!isDuprMatchBalanced(team1, team2)) return null;
+  const quartetIds = quartet.map((player) => player!.id);
 
-  return {
-    teamA: [team1[0].id, team1[1].id],
-    teamB: [team2[0].id, team2[1].id],
-    score: scoreQuartet(quartet, team1, team2, context, ranker),
-  };
+  if (
+    isSynergyActive(context.synergy) &&
+    !isQuartetSynergySelectionValid(quartetIds, availableIds, context.synergy.pairs)
+  ) {
+    return null;
+  }
+
+  let bestQuick: BalancedQuartetResult | null = null;
+
+  for (const [team1, team2] of mixedTeamSplitsForQuartet(quartet, context)) {
+    if (!isDuprMatchBalanced(team1, team2)) continue;
+    const candidate = {
+      teamA: [team1[0]!.id, team1[1]!.id],
+      teamB: [team2[0]!.id, team2[1]!.id],
+      score: scoreQuartet(quartet, team1, team2, context, ranker),
+    };
+    if (!bestQuick || candidate.score < bestQuick.score) {
+      bestQuick = candidate;
+    }
+  }
+
+  return bestQuick;
 }
 
 function findBestBalancedMixedQuartetBounded(
@@ -160,15 +184,22 @@ function findBestBalancedMixedQuartetBounded(
   femalePool: Player[],
   context: MatchmakingContext,
   ranker: FairnessRanker,
-  maxPerGender: number
+  maxPerGender: number,
+  availableIds: Set<string>
 ): BalancedQuartetResult | null {
-  const quick = tryMixedQuartetFromTopPriority(malePool, femalePool, context, ranker);
+  const quick = tryMixedQuartetFromTopPriority(
+    malePool,
+    femalePool,
+    context,
+    ranker,
+    availableIds
+  );
   if (quick) return quick;
 
   const males = malePool.length > maxPerGender ? malePool.slice(0, maxPerGender) : malePool;
   const females =
     femalePool.length > maxPerGender ? femalePool.slice(0, maxPerGender) : femalePool;
-  return findBestBalancedMixedQuartet(males, females, context, ranker);
+  return findBestBalancedMixedQuartet(males, females, context, ranker, availableIds);
 }
 
 /** Games-first gate, then Smash-style top-2 mix with bounded fallback search. */
@@ -189,8 +220,17 @@ export function findBestBalancedMixedDoublesMatch(
 
   if (males.length < 2 || females.length < 2) return null;
 
+  const availableIds = new Set(available.map((player) => player.id));
+
   return searchMixedWithGamesGate(males, females, maxPerGender, (maleBucket, femaleBucket) =>
-    findBestBalancedMixedQuartetBounded(maleBucket, femaleBucket, context, ranker, maxPerGender)
+    findBestBalancedMixedQuartetBounded(
+      maleBucket,
+      femaleBucket,
+      context,
+      ranker,
+      maxPerGender,
+      availableIds
+    )
   );
 }
 
@@ -216,11 +256,49 @@ function teamSplitsForQuartet(quartet: Player[]): Array<[Player[], Player[]]> {
   return TEAM_SPLITS.map(([a, b, c, d]) => [[byDupr[a], byDupr[b]], [byDupr[c], byDupr[d]]]);
 }
 
+function synergyAwareSplitsForQuartet(
+  quartet: Player[],
+  context: MatchmakingContext
+): Array<[Player[], Player[]]> {
+  const splits = teamSplitsForQuartet(quartet);
+  if (!isSynergyActive(context.synergy)) return splits;
+  const activePairs = pairsFullyInQuartet(
+    quartet.map((player) => player.id),
+    context.synergy.pairs
+  );
+  return filterValidTeamSplits(splits, activePairs);
+}
+
+function mixedTeamSplitsForQuartet(
+  quartet: Player[],
+  context: MatchmakingContext
+): Array<[Player[], Player[]]> {
+  const males = quartet.filter((player) => player.gender === 'male');
+  const females = quartet.filter((player) => player.gender === 'female');
+  if (males.length !== 2 || females.length !== 2) return [];
+
+  const [m1, m2] = males;
+  const [f1, f2] = females;
+  const splits: Array<[Player[], Player[]]> = [
+    [[m1!, f1!], [m2!, f2!]],
+    [[m1!, f2!], [m2!, f1!]],
+  ];
+
+  if (!isSynergyActive(context.synergy)) return splits;
+
+  const activePairs = pairsFullyInQuartet(
+    quartet.map((player) => player.id),
+    context.synergy.pairs
+  );
+  return filterValidTeamSplits(splits, activePairs);
+}
+
 function findBestQuartetInPool(
   pool: Player[],
   context: MatchmakingContext,
   ranker: FairnessRanker,
-  maxCandidates: number
+  maxCandidates: number,
+  availableIds: Set<string>
 ): BalancedQuartetResult | null {
   const candidates = pool.length > maxCandidates ? pool.slice(0, maxCandidates) : pool;
   if (candidates.length < 4) return null;
@@ -232,8 +310,16 @@ function findBestQuartetInPool(
       for (let k = j + 1; k < candidates.length - 1; k += 1) {
         for (let l = k + 1; l < candidates.length; l += 1) {
           const quartet = [candidates[i], candidates[j], candidates[k], candidates[l]];
+          const quartetIds = quartet.map((player) => player.id);
 
-          for (const [team1, team2] of teamSplitsForQuartet(quartet)) {
+          if (
+            isSynergyActive(context.synergy) &&
+            !isQuartetSynergySelectionValid(quartetIds, availableIds, context.synergy.pairs)
+          ) {
+            continue;
+          }
+
+          for (const [team1, team2] of synergyAwareSplitsForQuartet(quartet, context)) {
             if (!isDuprMatchBalanced(team1, team2)) continue;
 
             const finalScore = scoreQuartet(quartet, team1, team2, context, ranker);
@@ -262,8 +348,10 @@ export function findBestBalancedQuartetWithGamesGate(
   const ordered = ranker.sortByFairness(pool, context);
   if (ordered.length < 4) return null;
 
+  const availableIds = new Set(ordered.map((player) => player.id));
+
   return searchWithGamesGate(ordered, 4, maxCandidates, (bucket) =>
-    findBestQuartetInPool(bucket, context, ranker, maxCandidates)
+    findBestQuartetInPool(bucket, context, ranker, maxCandidates, availableIds)
   );
 }
 
@@ -288,7 +376,8 @@ export function findBestBalancedQuartetInPool(
   ranker: FairnessRanker = fairnessRanker,
   maxCandidates = MATCHMAKING_LIMITS.maxDoublesCandidates
 ): BalancedQuartetResult | null {
-  return findBestQuartetInPool(pool, context, ranker, maxCandidates);
+  const availableIds = new Set(pool.map((player) => player.id));
+  return findBestQuartetInPool(pool, context, ranker, maxCandidates, availableIds);
 }
 
 /** Games-first gate, then combinatorial DUPR search across the eligible pool. */

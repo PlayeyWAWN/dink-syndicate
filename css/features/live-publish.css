@@ -1,0 +1,33 @@
+.live-publish-panel {
+  margin-bottom: 1rem;
+}
+
+.live-publish-panel__lead {
+  margin: 0 0 0.75rem;
+}
+
+.live-publish-panel__notice {
+  color: var(--text-muted, #666);
+}
+
+.live-publish-panel__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.live-publish-panel__link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.live-publish-panel__link {
+  flex: 1 1 240px;
+}
+
+.live-publish-panel__viewers {
+  font-weight: 600;
+}

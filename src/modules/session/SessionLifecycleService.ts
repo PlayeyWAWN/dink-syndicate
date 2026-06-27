@@ -1,3 +1,4 @@
+import { livePublishService } from '@/modules/live/LivePublishService';
 import {
   buildSessionArchive,
   hasSessionActivity,
@@ -23,6 +24,8 @@ export function endSessionAndArchive(archiveName?: string): void {
   const snapshot = useSessionStore.getState().loadSnapshot();
   if (!snapshot) return;
 
+  void livePublishService.disablePublish();
+
   const name = archiveName?.trim() || defaultArchiveName();
   const archive = buildSessionArchive(snapshot, name);
   useSessionStore.getState().appendSessionArchive(archive);
@@ -38,6 +41,8 @@ export interface StartNewSessionOptions {
 
 /** Archives optionally, clears queue/courts/session stats, and sets session start to now. */
 export function startNewSession(options: StartNewSessionOptions = {}): void {
+  void livePublishService.disablePublish();
+
   const snapshot = useSessionStore.getState().loadSnapshot();
   if (snapshot && (options.archiveName || (options.archiveCurrent && hasSessionActivity(snapshot)))) {
     const name = options.archiveName?.trim() || defaultArchiveName();

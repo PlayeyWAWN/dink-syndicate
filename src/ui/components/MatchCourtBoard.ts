@@ -2,6 +2,7 @@ import { el } from '@/lib/dom-utils';
 import { splitTeams } from '@/lib/format-utils';
 import { mountPickleballCourt } from '@/modules/courts/pickleball-court';
 import { renderMatchPlayerChip } from '@/ui/components/MatchPlayerChip';
+import { SynergyDisplayOptions, getSynergyChipLabel } from '@/ui/components/SynergyTeamModal';
 import { Player } from '@/types/player';
 
 export interface MatchCourtBoardOptions {
@@ -9,6 +10,7 @@ export interface MatchCourtBoardOptions {
   players: Player[];
   active?: boolean;
   label?: string;
+  synergy?: SynergyDisplayOptions;
   onPlayerChipClick?: (playerId: string) => void;
   metaFormat?: 'games' | 'dupr';
 }
@@ -21,7 +23,7 @@ const POSITIONS = [
 ];
 
 export function renderMatchCourtBoard(options: MatchCourtBoardOptions): HTMLElement {
-  const { playerIds, players, active = false, label = 'Pickleball court', onPlayerChipClick, metaFormat } =
+  const { playerIds, players, active = false, label = 'Pickleball court', synergy, onPlayerChipClick, metaFormat } =
     options;
   const { teamA, teamB } = splitTeams(playerIds);
 
@@ -43,6 +45,8 @@ export function renderMatchCourtBoard(options: MatchCourtBoardOptions): HTMLElem
             ? () => onPlayerChipClick(playerId)
             : undefined,
         metaFormat,
+        synergyPartnerName:
+          playerId && synergy ? getSynergyChipLabel(playerId, synergy) : null,
       })
     );
     court.append(wrap);

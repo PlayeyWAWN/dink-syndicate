@@ -7,6 +7,13 @@ import {
   isSinglesPairBalanced,
   teamAvgDupr,
 } from '@/modules/matchmaking/DuprBalance';
+import {
+  applySynergyToManualLineup,
+  getSynergyConfig,
+  isSynergyActive,
+  SynergyTeamConfig,
+} from '@/modules/matchmaking/synergyTeam';
+import { AppSettings } from '@/types/app-data';
 import { Player } from '@/types/player';
 import { QueueEntry } from '@/types/queue';
 
@@ -34,7 +41,8 @@ export interface BalanceAssessment {
 export function buildManualMatch(
   courtFormat: CourtFormat,
   matchMode: QueueMatchMode,
-  selected: Player[]
+  selected: Player[],
+  settings?: Pick<AppSettings, 'synergyTeamsEnabled' | 'synergyPairs'>
 ): ManualMatchResult {
   if (courtFormat === 'singles') {
     if (selected.length !== 2) {
@@ -57,11 +65,12 @@ export function buildManualMatch(
     if (males !== 2 || females !== 2) {
       return { ok: false, message: 'Mixed doubles needs 2 males and 2 females in your selection.' };
     }
-    return {
-      ok: true,
-      format: 'mixed_doubles',
-      playerIds: balanceMixedDoublesTeams(selected),
-    };
+    return finalizeDoublesManualMatch(
+      balanceMixedDoublesTeams(selected),
+      selected,
+      'mixed_doubles',
+      getSynergyConfig(settings)
+    );
   }
 
   if (matchMode === 'same_gender') {
@@ -73,18 +82,41 @@ export function buildManualMatch(
         message: 'Same-gender doubles needs 4 players of the same gender.',
       };
     }
+    return finalizeDoublesManualMatch(
+      balanceDoublesTeamsBySplit(selected),
+      selected,
+      'same_gender_doubles',
+      getSynergyConfig(settings)
+    );
+  }
+
+  return finalizeDoublesManualMatch(
+    balanceDoublesTeamsBySplit(selected),
+    selected,
+    'doubles',
+    getSynergyConfig(settings)
+  );
+}
+
+function finalizeDoublesManualMatch(
+  playerIds: string[],
+  selected: Player[],
+  format: QueueEntry['format'],
+  synergy: SynergyTeamConfig
+): ManualMatchResult {
+  if (!isSynergyActive(synergy)) {
+    return { ok: true, format, playerIds };
+  }
+
+  const adjusted = applySynergyToManualLineup(playerIds, selected, synergy);
+  if (!adjusted) {
     return {
-      ok: true,
-      format: 'same_gender_doubles',
-      playerIds: balanceDoublesTeamsBySplit(selected),
+      ok: false,
+      message: 'Synergy pairs cannot be partnered together in this selection.',
     };
   }
 
-  return {
-    ok: true,
-    format: 'doubles',
-    playerIds: balanceDoublesTeamsBySplit(selected),
-  };
+  return { ok: true, format, playerIds: adjusted };
 }
 
 /** Check whether ordered playerIds satisfy gender rules for the entry format. */

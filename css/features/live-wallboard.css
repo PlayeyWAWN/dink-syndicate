@@ -1,0 +1,396 @@
+.live-wallboard-body {
+  background: #0b1220;
+  color: #f5f7fb;
+  min-height: 100vh;
+}
+
+.live-wallboard-root {
+  min-height: 100vh;
+}
+
+/* Match Smash Syndicate watch.html wrap: 800px, 1100px at 1280+ */
+.live-wallboard {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem 16px 1.5rem;
+}
+
+@media (min-width: 1280px) {
+  .live-wallboard {
+    max-width: 1100px;
+  }
+}
+
+.live-wallboard__header {
+  text-align: center;
+  margin-bottom: 22px;
+  color: #f5f7fb;
+}
+
+.live-wallboard__logo {
+  height: auto;
+  min-height: 88px;
+  max-height: 160px;
+  width: auto;
+  max-width: min(92vw, 320px);
+  object-fit: contain;
+  margin: 0 auto 12px;
+  display: block;
+}
+
+.live-wallboard__organizer {
+  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 4px;
+}
+
+.live-wallboard__tagline {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.95;
+  margin: 0;
+}
+
+.live-wallboard__date {
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 10px 0 0;
+  opacity: 0.88;
+}
+
+.live-wallboard__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  min-width: 9.5rem;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.live-wallboard__status-sep {
+  opacity: 0.85;
+}
+
+.live-wallboard__section {
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.live-wallboard__section-title {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.live-wallboard__empty {
+  opacity: 0.75;
+}
+
+/* Active matches — stacked courts (Smash watch.html proportions) */
+.live-wallboard__active-list,
+.live-wallboard .active-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  grid-template-columns: none;
+}
+
+.live-wallboard__section--active {
+  padding-bottom: 18px;
+}
+
+.live-wallboard .active-match-card {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.live-wallboard .active-match-card__header-bar {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
+}
+
+.live-wallboard .active-match-card__court-name {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.live-wallboard .active-match-card__format,
+.live-wallboard .active-match-card__timer {
+  color: rgba(248, 250, 252, 0.82);
+}
+
+.live-wallboard .match-court-board {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.live-wallboard .match-court-board__court {
+  background: #475569;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 2 / 1;
+  container-type: size;
+  container-name: wallboard-court;
+}
+
+.live-wallboard .match-court-board__pos {
+  width: min(84px, 21vw);
+}
+
+.live-wallboard .match-court-board__pos--tl {
+  top: 23%;
+  left: 15%;
+}
+
+.live-wallboard .match-court-board__pos--bl {
+  top: 77%;
+  left: 15%;
+}
+
+.live-wallboard .match-court-board__pos--tr {
+  top: 23%;
+  right: 15%;
+}
+
+.live-wallboard .match-court-board__pos--br {
+  top: 77%;
+  right: 15%;
+}
+
+.live-wallboard .match-court-board__pos .match-player-chip {
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  box-sizing: border-box;
+  border-radius: 10px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: none;
+  container-type: size;
+  container-name: wallboard-pcard;
+}
+
+.live-wallboard .match-court-board__pos .match-player-chip__name {
+  font-size: 0.61rem;
+  font-weight: 700;
+  line-height: 1.12;
+  width: 100%;
+  flex: none;
+  min-height: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+  text-align: center;
+}
+
+.live-wallboard .match-court-board__pos .match-player-chip__meta {
+  font-size: 0.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  width: 100%;
+  margin-top: 0;
+  padding-top: 0;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+/* Active court chips: centered square badge stack */
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court {
+  padding: 5px;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(18px, 26cqw, 34px);
+  height: clamp(18px, 26cqw, 34px);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  flex-shrink: 0;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon {
+  font-size: clamp(12px, 18cqw, 22px);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon.app-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__name {
+  font-size: clamp(0.52rem, 14cqw, 0.68rem);
+  line-height: 1.1;
+  max-height: 2.2em;
+}
+
+.live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__meta--rating {
+  font-size: clamp(0.46rem, 12cqw, 0.58rem);
+  font-weight: 800;
+  opacity: 1;
+}
+
+@media (max-width: 420px) {
+  .live-wallboard .match-court-board__pos {
+    width: min(78px, 20vw);
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip {
+    padding: 5px;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon-wrap {
+    width: 20px;
+    height: 20px;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon {
+    font-size: 12px;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__name {
+    font-size: 0.58rem;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__meta--rating {
+    font-size: 0.47rem;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__name {
+    font-size: 0.58rem;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__meta {
+    font-size: 0.47rem;
+  }
+}
+
+@container wallboard-court (min-width: 380px) {
+  .live-wallboard .match-court-board__pos {
+    width: 28cqh;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon-wrap {
+    width: clamp(22px, 24cqh, 36px);
+    height: clamp(22px, 24cqh, 36px);
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon {
+    font-size: clamp(14px, 20cqh, 28px);
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__name {
+    font-size: clamp(10px, 17cqh, 20px);
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    display: -webkit-box;
+    white-space: normal;
+    max-height: none;
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__meta--rating {
+    font-size: clamp(9px, 13cqh, 16px);
+  }
+}
+
+@container wallboard-court (min-width: 550px) {
+  .live-wallboard .match-court-board__pos {
+    width: 30cqh;
+  }
+}
+
+@container wallboard-pcard (min-height: 72px) {
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon-wrap {
+    width: clamp(24px, 26cqh, 38px);
+    height: clamp(24px, 26cqh, 38px);
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__icon {
+    font-size: clamp(14px, 22cqh, 30px);
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__name {
+    font-size: clamp(11px, 18cqh, 22px);
+  }
+
+  .live-wallboard .match-court-board__pos .live-wallboard__player-chip--court .match-player-chip__meta--rating {
+    font-size: clamp(9px, 14cqh, 18px);
+  }
+}
+
+.live-wallboard__player-chip--team-a {
+  background: var(--team1-label, #38bdf8);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.live-wallboard__player-chip--team-b {
+  background: var(--team2-label, #f9a8d4);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.live-wallboard .match-player-chip__name {
+  font-weight: 700;
+}
+
+.live-wallboard__active-card {
+  padding: 0;
+  border-radius: 14px;
+  background: transparent;
+  width: 100%;
+}
