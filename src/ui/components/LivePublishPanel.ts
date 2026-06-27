@@ -170,7 +170,7 @@ export function renderLivePublishPanel(options: LivePublishPanelOptions): HTMLEl
     if (enabled) {
       bindViewerListener();
       refreshStatus();
-      void livePublishService.syncSnapshot();
+      livePublishService.ensurePublishing();
     }
 
     content.addEventListener('DOMNodeRemoved', () => viewerUnsub?.());

@@ -11,6 +11,8 @@ import { getFirebaseFirestore } from '@/config/firebase-app';
 import { isFirebaseEnabled } from '@/config/firebase';
 import { deriveOrganizerName } from '@/modules/auth/deriveOrganizerName';
 import { FIRESTORE_PATHS, todayDateKey } from '@/modules/live/firestore-paths';
+import { isLiveSessionActive, isLiveSessionStale } from '@/modules/live/live-session-expiry';
+import { livePublishService } from '@/modules/live/LivePublishService';
 import { subscribeActiveViewerCount } from '@/modules/live/WallboardViewerPresenceService';
 import { AdminDailyRollup, UserProfile, WallboardDailyRollup } from '@/types/analytics';
 import { LiveSessionSnapshot, ONLINE_USER_THRESHOLD_MS } from '@/types/live';
@@ -58,10 +60,19 @@ export function subscribeAdminDashboard(callbacks: AdminDashboardCallbacks): Uns
 
   const unsubs: Unsubscribe[] = [];
   const viewerUnsubs = new Map<string, Unsubscribe>();
+  const expiringTokens = new Set<string>();
   let liveTokens: string[] = [];
 
+  const expireStaleSession = (session: LiveSessionSnapshot): void => {
+    if (!isLiveSessionStale(session) || expiringTokens.has(session.publishToken)) return;
+    expiringTokens.add(session.publishToken);
+    void livePublishService.expireStaleSession(session.publishToken).finally(() => {
+      expiringTokens.delete(session.publishToken);
+    });
+  };
+
   const updateViewerSubscriptions = (sessions: LiveSessionSnapshot[]): void => {
-    const tokens = sessions.filter((s) => s.isActive).map((s) => s.publishToken);
+    const tokens = sessions.filter((s) => isLiveSessionActive(s)).map((s) => s.publishToken);
     const counts: Record<string, number> = {};
 
     for (const token of liveTokens) {
@@ -102,7 +113,11 @@ export function subscribeAdminDashboard(callbacks: AdminDashboardCallbacks): Uns
 
   unsubs.push(
     onSnapshot(query(collection(db, 'liveSessions'), where('isActive', '==', true)), (snap) => {
-      const sessions = snap.docs.map((d) => d.data() as LiveSessionSnapshot);
+      const raw = snap.docs.map((d) => d.data() as LiveSessionSnapshot);
+      for (const session of raw) {
+        expireStaleSession(session);
+      }
+      const sessions = raw.filter((s) => isLiveSessionActive(s));
       callbacks.onLiveSessions(sessions);
       updateViewerSubscriptions(sessions);
     })

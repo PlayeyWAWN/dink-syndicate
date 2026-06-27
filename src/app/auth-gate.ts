@@ -8,6 +8,7 @@ import { useSessionStore } from '@/stores/sessionStore';
 import { Session } from '@/types/session';
 import { mountAuthOverlay, AuthOverlayController } from '@/ui/components/AuthOverlay';
 import { appAnalyticsService } from '@/modules/analytics/AppAnalyticsService';
+import { livePublishService } from '@/modules/live/LivePublishService';
 import { onAppSignOut } from '@/app/bootstrap';
 
 let authOverlay: AuthOverlayController | null = null;
@@ -20,6 +21,7 @@ async function hydrateStoresForSession(session: Session): Promise<void> {
   useQueueStore.getState().hydrate();
   useQueueUiStore.getState().hydrateFromSettings(snapshot?.settings);
   await appAnalyticsService.onAuthSession(session);
+  livePublishService.ensurePublishing();
 }
 
 /**

@@ -3,6 +3,8 @@ import { getFirebaseFirestore } from '@/config/firebase-app';
 import { isFirebaseEnabled } from '@/config/firebase';
 import { el, clearElement } from '@/lib/dom-utils';
 import { FIRESTORE_PATHS } from '@/modules/live/firestore-paths';
+import { isLiveSessionActive } from '@/modules/live/live-session-expiry';
+import { livePublishService } from '@/modules/live/LivePublishService';
 import { startWallboardViewerPresence } from '@/modules/live/WallboardViewerPresenceService';
 import { sponsorConfigService } from '@/modules/live/SponsorConfigService';
 import { LiveSessionSnapshot, SponsorConfig } from '@/types/live';
@@ -66,7 +68,7 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
   const render = (snapshot: LiveSessionSnapshot | null, inactive = false): void => {
     clearElement(root);
 
-    if (!snapshot || inactive || !snapshot.isActive) {
+    if (!snapshot || inactive || !isLiveSessionActive(snapshot)) {
       root.append(
         el('div', { className: 'live-wallboard live-wallboard--inactive' }, [
           el('img', { className: 'live-wallboard__logo', src: '/images/logo.webp', alt: 'Dink Syndicate' }),
@@ -133,6 +135,11 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
         return;
       }
       lastSnapshot = snap.data() as LiveSessionSnapshot;
+      if (!isLiveSessionActive(lastSnapshot)) {
+        void livePublishService.expireStaleSession(token);
+        render(lastSnapshot, true);
+        return;
+      }
       render(lastSnapshot);
     },
     () => {
