@@ -44,7 +44,7 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
   let presenceHandle: { stop: () => void } | null = null;
   let sponsorConfig: SponsorConfig = { sponsorsEnabled: false, sponsors: [], updatedAt: 0 };
   let lastSnapshot: LiveSessionSnapshot | null = null;
-  let alertRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  let alertRefreshTimer: number | null = null;
 
   const render = (snapshot: LiveSessionSnapshot | null, inactive = false): void => {
     clearElement(root);
