@@ -77,27 +77,25 @@ function buildPlayerLookup(
 export function renderWallboardHeader(organizerName: string, updatedAt: number): HTMLElement {
   const now = new Date();
   const header = el('header', { className: 'live-wallboard__header' });
-  const brand = el('div', { className: 'live-wallboard__brand' });
-  brand.append(
+  header.append(
     el('img', {
       className: 'live-wallboard__logo',
       src: '/images/logo.webp',
       alt: 'Dink Syndicate',
+      width: '160',
+      height: '160',
     }),
-    el('p', { className: 'live-wallboard__brand-name' }, ['Dink Syndicate'])
-  );
-
-  header.append(
-    brand,
-    el('div', { className: 'live-wallboard__header-text' }, [
-      el('p', { className: 'live-wallboard__organizer' }, [organizerName]),
-      el('p', { className: 'live-wallboard__date', id: 'wallboard-date' }, [
-        formatWallboardDate(now),
-      ]),
-      el('p', { className: 'live-wallboard__clock', id: 'wallboard-clock' }, [
+    el('h1', { className: 'live-wallboard__organizer' }, [organizerName]),
+    el('p', { className: 'live-wallboard__tagline' }, ['Live Wallboard']),
+    el('p', { className: 'live-wallboard__date', id: 'wallboard-date' }, [
+      formatWallboardDate(now),
+    ]),
+    el('div', { className: 'live-wallboard__status-pill', role: 'status' }, [
+      el('span', { className: 'live-wallboard__clock', id: 'wallboard-clock' }, [
         now.toLocaleTimeString(),
       ]),
-      el('p', {
+      el('span', { className: 'live-wallboard__status-sep' }, [' · ']),
+      el('span', {
         className: 'live-wallboard__updated',
         id: 'wallboard-updated',
         'data-updated-at': String(updatedAt),

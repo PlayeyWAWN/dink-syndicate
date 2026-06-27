@@ -8,146 +8,110 @@
   min-height: 100vh;
 }
 
+/* Match Smash Syndicate watch.html wrap: 800px, 1100px at 1280+ */
 .live-wallboard {
-  max-width: min(1920px, 98vw);
+  max-width: 800px;
   margin: 0 auto;
-  padding: 1rem 1.25rem 1.5rem;
+  padding: 1rem 16px 1.5rem;
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   .live-wallboard {
-    padding: 1.5rem 2rem 2rem;
-  }
-}
-
-@media (min-width: 1600px) {
-  .live-wallboard {
-    padding: 2rem 2.5rem 2.5rem;
+    max-width: 1100px;
   }
 }
 
 .live-wallboard__header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.live-wallboard__brand {
-  flex-shrink: 0;
   text-align: center;
+  margin-bottom: 22px;
+  color: #f5f7fb;
 }
 
 .live-wallboard__logo {
-  width: 96px;
-  height: 96px;
+  height: auto;
+  min-height: 88px;
+  max-height: 160px;
+  width: auto;
+  max-width: min(92vw, 320px);
   object-fit: contain;
+  margin: 0 auto 12px;
   display: block;
-  margin: 0 auto;
-}
-
-.live-wallboard__brand-name {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 1.15;
-  margin: 0.35rem 0 0;
-  text-transform: uppercase;
-}
-
-.live-wallboard__header-text {
-  flex: 1;
-  min-width: 0;
 }
 
 .live-wallboard__organizer {
-  font-size: 1rem;
+  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 4px;
+}
+
+.live-wallboard__tagline {
+  font-size: 0.82rem;
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.95;
   margin: 0;
-  opacity: 0.9;
 }
 
 .live-wallboard__date {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  margin: 0.35rem 0 0;
+  margin: 10px 0 0;
   opacity: 0.88;
 }
 
-.live-wallboard__clock {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin: 0.2rem 0 0;
+.live-wallboard__status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  min-width: 9.5rem;
+  margin-top: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.live-wallboard__updated {
-  margin: 0.2rem 0 0;
-  opacity: 0.72;
-  font-size: 0.88rem;
-}
-
-@media (min-width: 768px) {
-  .live-wallboard__logo {
-    width: 120px;
-    height: 120px;
-  }
-
-  .live-wallboard__brand-name {
-    font-size: 1.65rem;
-  }
-
-  .live-wallboard__organizer {
-    font-size: 1.1rem;
-  }
-
-  .live-wallboard__date {
-    font-size: 1.05rem;
-  }
-
-  .live-wallboard__clock {
-    font-size: 1.2rem;
-  }
-}
-
-@media (min-width: 1400px) {
-  .live-wallboard__logo {
-    width: 140px;
-    height: 140px;
-  }
-
-  .live-wallboard__brand-name {
-    font-size: 1.85rem;
-  }
+.live-wallboard__status-sep {
+  opacity: 0.85;
 }
 
 .live-wallboard__section {
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  margin-bottom: 16px;
+  padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
 .live-wallboard__section-title {
-  margin: 0 0 0.75rem;
-  font-size: 1.25rem;
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #38bdf8;
 }
 
 .live-wallboard__empty {
   opacity: 0.75;
 }
 
-/* Active matches — full-width stacked courts */
+/* Active matches — stacked courts (Smash watch.html proportions) */
 .live-wallboard__active-list,
 .live-wallboard .active-match-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 18px;
   grid-template-columns: none;
 }
 
 .live-wallboard__section--active {
-  padding-bottom: 1.25rem;
+  padding-bottom: 18px;
 }
 
 .live-wallboard .active-match-card {
@@ -156,15 +120,20 @@
   color: #f8fafc;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .live-wallboard .active-match-card__header-bar {
   background: rgba(255, 255, 255, 0.04);
   border-bottom-color: rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
 }
 
 .live-wallboard .active-match-card__court-name {
   color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .live-wallboard .active-match-card__format,
@@ -175,7 +144,7 @@
 .live-wallboard .match-court-board {
   width: 100%;
   max-width: none;
-  padding: 0.75rem 0.85rem 0.9rem;
+  padding: 0;
 }
 
 .live-wallboard .match-court-board__court {
@@ -183,50 +152,126 @@
   max-width: none;
   width: 100%;
   margin: 0;
-  aspect-ratio: 2 / 1.15;
+  aspect-ratio: 2 / 1;
+  container-type: size;
+  container-name: wallboard-court;
 }
 
 .live-wallboard .match-court-board__pos {
-  width: min(88px, 24vw);
+  width: min(84px, 21vw);
 }
 
 .live-wallboard .match-court-board__pos--tl {
-  top: 16%;
-  left: 3%;
+  top: 23%;
+  left: 15%;
 }
 
 .live-wallboard .match-court-board__pos--bl {
-  top: 84%;
-  left: 3%;
+  top: 77%;
+  left: 15%;
 }
 
 .live-wallboard .match-court-board__pos--tr {
-  top: 16%;
-  right: 3%;
+  top: 23%;
+  right: 15%;
 }
 
 .live-wallboard .match-court-board__pos--br {
-  top: 84%;
-  right: 3%;
+  top: 77%;
+  right: 15%;
 }
 
 .live-wallboard .match-court-board__pos .match-player-chip {
-  min-height: auto;
-  padding: 0.45rem 0.4rem 0.5rem;
+  width: 100%;
+  height: 72px;
+  min-height: 72px;
+  max-height: 72px;
+  padding: 4px 5px 5px;
+  box-sizing: border-box;
+  border-radius: 10px;
   max-width: none;
 }
 
 .live-wallboard .match-court-board__pos .match-player-chip__name {
-  font-size: 0.7rem;
-  line-height: 1.25;
-  word-break: break-word;
+  font-size: 0.61rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  word-break: normal;
   hyphens: none;
 }
 
 .live-wallboard .match-court-board__pos .match-player-chip__meta {
-  font-size: 0.58rem;
+  font-size: 0.5rem;
   line-height: 1.2;
-  margin-top: 0.15rem;
+  margin-top: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 420px) {
+  .live-wallboard .match-court-board__pos {
+    width: min(78px, 20vw);
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip {
+    height: 66px;
+    min-height: 66px;
+    max-height: 66px;
+    padding: 3px 4px 4px;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__name {
+    font-size: 0.58rem;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__meta {
+    font-size: 0.47rem;
+  }
+}
+
+@container wallboard-court (min-width: 380px) {
+  .live-wallboard .match-court-board__pos {
+    width: 28cqh;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip {
+    width: 28cqh;
+    height: 28cqh;
+    min-height: 28cqh;
+    max-height: 28cqh;
+    padding: 0.12em 0.28em 0.14em;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__name {
+    font-size: clamp(11px, 20cqh, 26px);
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    display: block;
+    white-space: nowrap;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__meta {
+    font-size: clamp(8px, 14cqh, 18px);
+  }
+}
+
+@container wallboard-court (min-width: 550px) {
+  .live-wallboard .match-court-board__pos {
+    width: 30cqh;
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip {
+    width: 30cqh;
+    height: 30cqh;
+    min-height: 30cqh;
+    max-height: 30cqh;
+  }
 }
 
 .live-wallboard__player-chip--team-a {
@@ -245,109 +290,9 @@
   font-weight: 700;
 }
 
-@media (min-width: 768px) {
-  .live-wallboard__active-list,
-  .live-wallboard .active-match-list {
-    gap: 1.75rem;
-  }
-
-  .live-wallboard .match-court-board__court {
-    aspect-ratio: 16 / 8;
-    min-height: 220px;
-  }
-
-  .live-wallboard .match-court-board__pos {
-    width: min(130px, 18%);
-  }
-
-  .live-wallboard .match-court-board__pos--tl {
-    top: 18%;
-    left: 5%;
-  }
-
-  .live-wallboard .match-court-board__pos--bl {
-    top: 82%;
-    left: 5%;
-  }
-
-  .live-wallboard .match-court-board__pos--tr {
-    top: 18%;
-    right: 5%;
-  }
-
-  .live-wallboard .match-court-board__pos--br {
-    top: 82%;
-    right: 5%;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip {
-    min-height: 4.25rem;
-    padding: 0.5rem 0.45rem 0.55rem;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip__name {
-    font-size: 0.85rem;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip__meta {
-    font-size: 0.68rem;
-  }
-
-  .live-wallboard .active-match-card__header-bar {
-    padding: 0.85rem 1.1rem;
-  }
-}
-
-@media (min-width: 1100px) {
-  .live-wallboard .active-match-card__court-name {
-    font-size: 1.5rem;
-  }
-
-  .live-wallboard .match-court-board__court {
-    aspect-ratio: 16 / 7.5;
-    min-height: 280px;
-  }
-
-  .live-wallboard .match-court-board__pos {
-    width: min(160px, 16%);
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip {
-    min-height: 5rem;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip__name {
-    font-size: 1rem;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip__meta {
-    font-size: 0.75rem;
-  }
-}
-
-@media (min-width: 1600px) {
-  .live-wallboard .match-court-board__court {
-    min-height: 340px;
-  }
-
-  .live-wallboard .match-court-board__pos {
-    width: min(180px, 14%);
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip {
-    min-height: 5.5rem;
-    padding: 0.6rem 0.5rem 0.65rem;
-  }
-
-  .live-wallboard .match-court-board__pos .match-player-chip__name {
-    font-size: 1.1rem;
-  }
-}
-
 .live-wallboard__active-card {
   padding: 0;
-  border-radius: 16px;
+  border-radius: 14px;
   background: transparent;
   width: 100%;
 }
-
