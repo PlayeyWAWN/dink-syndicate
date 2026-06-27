@@ -186,15 +186,24 @@
   height: 72px;
   min-height: 72px;
   max-height: 72px;
-  padding: 4px 5px 5px;
   box-sizing: border-box;
   border-radius: 10px;
+  padding: 4px 5px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
   max-width: none;
 }
 
 .live-wallboard .match-court-board__pos .match-player-chip__name {
   font-size: 0.61rem;
+  font-weight: 700;
   line-height: 1.15;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -202,16 +211,23 @@
   -webkit-line-clamp: 2;
   line-clamp: 2;
   word-break: normal;
+  overflow-wrap: normal;
   hyphens: none;
+  text-align: center;
 }
 
 .live-wallboard .match-court-board__pos .match-player-chip__meta {
   font-size: 0.5rem;
+  font-weight: 600;
   line-height: 1.2;
+  width: 100%;
   margin-top: auto;
+  padding-top: 2px;
+  flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  opacity: 0.92;
 }
 
 @media (max-width: 420px) {
@@ -241,23 +257,48 @@
   }
 
   .live-wallboard .match-court-board__pos .match-player-chip {
+    container-type: size;
+    container-name: wallboard-pcard;
     width: 28cqh;
     height: 28cqh;
     min-height: 28cqh;
     max-height: 28cqh;
     padding: 0.12em 0.28em 0.14em;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    align-items: stretch;
+    justify-items: center;
   }
 
   .live-wallboard .match-court-board__pos .match-player-chip__name {
-    font-size: clamp(11px, 20cqh, 26px);
-    -webkit-line-clamp: 1;
-    line-clamp: 1;
-    display: block;
+    grid-row: 1;
+    align-self: center;
+    justify-self: stretch;
+    flex: none;
+    width: 100%;
+    line-height: 1.1;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
+    display: block;
+    -webkit-box-orient: unset;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    word-break: normal;
+    overflow-wrap: normal;
+    text-align: center;
   }
 
   .live-wallboard .match-court-board__pos .match-player-chip__meta {
-    font-size: clamp(8px, 14cqh, 18px);
+    grid-row: 2;
+    align-self: start;
+    justify-self: stretch;
+    margin-top: 0;
+    padding-top: 0;
+    text-align: center;
   }
 }
 
@@ -271,6 +312,16 @@
     height: 30cqh;
     min-height: 30cqh;
     max-height: 30cqh;
+  }
+}
+
+@container wallboard-pcard (min-height: 60px) {
+  .live-wallboard .match-court-board__pos .match-player-chip__name {
+    font-size: clamp(11px, 20cqh, 26px);
+  }
+
+  .live-wallboard .match-court-board__pos .match-player-chip__meta {
+    font-size: clamp(8px, 14cqh, 18px);
   }
 }
 

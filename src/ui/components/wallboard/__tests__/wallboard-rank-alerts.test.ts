@@ -28,15 +28,29 @@ describe('processWallboardRankAlerts', () => {
     resetWallboardRankAlerts();
   });
 
-  it('creates alerts for new top-10 entrants when baseline exists', () => {
+  it('creates a highlight for new top-10 entrants when baseline exists', () => {
     processWallboardRankAlerts([row(1, 'p1', 'Alice')]);
-    const alerts = processWallboardRankAlerts([
+    const highlight = processWallboardRankAlerts([
       row(1, 'p1', 'Alice', 'same'),
       row(2, 'p2', 'Bob', 'new'),
     ]);
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0].message).toContain('Bob');
+    expect(highlight?.message).toContain('Bob');
     expect(hasActiveWallboardRankAlerts()).toBe(true);
+  });
+
+  it('replaces the highlight when a newer event occurs', () => {
+    processWallboardRankAlerts([row(1, 'p1', 'Alice')]);
+    processWallboardRankAlerts([
+      row(1, 'p1', 'Alice', 'same'),
+      row(2, 'p2', 'Bob', 'new'),
+    ]);
+
+    const highlight = processWallboardRankAlerts([
+      row(1, 'p2', 'Bob', 'up'),
+      row(2, 'p1', 'Alice', 'down'),
+    ]);
+    expect(highlight?.message).toContain('Bob');
+    expect(highlight?.message).not.toContain('enters');
   });
 
   it('creates knock commentary when a player climbs the board', () => {
@@ -45,35 +59,19 @@ describe('processWallboardRankAlerts', () => {
       row(2, 'p3', 'Charlie'),
       row(3, 'p2', 'Bob'),
     ]);
-    const alerts = processWallboardRankAlerts([
+    const highlight = processWallboardRankAlerts([
       row(1, 'p1', 'Alice', 'same'),
       row(2, 'p2', 'Bob', 'up'),
       row(3, 'p3', 'Charlie', 'down'),
     ]);
-    expect(alerts.some((alert) => alert.message.includes('Bob'))).toBe(true);
-    expect(alerts.some((alert) => alert.message.includes('Charlie'))).toBe(true);
-    expect(alerts[0].message).toMatch(/knocks|snatches|stomps|bumping|shoves|climbs/i);
-  });
-
-  it('keeps alerts after delta changes on subsequent snapshots', () => {
-    processWallboardRankAlerts([row(1, 'p1', 'Alice')]);
-    processWallboardRankAlerts([
-      row(1, 'p1', 'Alice', 'same'),
-      row(2, 'p2', 'Bob', 'new'),
-    ]);
-
-    const alerts = processWallboardRankAlerts([
-      row(1, 'p1', 'Alice', 'same'),
-      row(2, 'p2', 'Bob', 'same'),
-    ]);
-    expect(alerts).toHaveLength(1);
-    expect(alerts[0].message).toContain('Bob');
+    expect(highlight?.message).toContain('Bob');
+    expect(highlight?.message).toMatch(/knocks|snatches|stomps|bumping|shoves|climbs|moved up/i);
   });
 
   it('does not alert when everyone is new on first publish', () => {
     const rankings = [row(1, 'p1', 'Alice', 'new'), row(2, 'p2', 'Bob', 'new')];
-    const alerts = processWallboardRankAlerts(rankings);
-    expect(alerts).toHaveLength(0);
+    const highlight = processWallboardRankAlerts(rankings);
+    expect(highlight).toBeNull();
   });
 
   it('does not alert when nobody has played yet', () => {
@@ -89,7 +87,23 @@ describe('processWallboardRankAlerts', () => {
         delta: 'new' as const,
       },
     ];
-    const alerts = processWallboardRankAlerts(rankings);
-    expect(alerts).toHaveLength(0);
+    const highlight = processWallboardRankAlerts(rankings);
+    expect(highlight).toBeNull();
+  });
+
+  it('only keeps one highlight instead of stacking many', () => {
+    processWallboardRankAlerts([row(1, 'p1', 'Alice')]);
+    processWallboardRankAlerts([
+      row(1, 'p1', 'Alice', 'same'),
+      row(2, 'p2', 'Bob', 'new'),
+      row(3, 'p3', 'Charlie', 'new'),
+    ]);
+    const highlight = processWallboardRankAlerts([
+      row(1, 'p1', 'Alice', 'same'),
+      row(2, 'p2', 'Bob', 'same'),
+      row(3, 'p3', 'Charlie', 'same'),
+    ]);
+    expect(highlight).not.toBeNull();
+    expect(highlight?.message).toBeTruthy();
   });
 });

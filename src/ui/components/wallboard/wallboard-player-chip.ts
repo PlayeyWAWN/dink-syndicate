@@ -29,7 +29,10 @@ export function renderWallboardPlayerChip(
     className: `match-player-chip live-wallboard__player-chip live-wallboard__player-chip--team-${team.toLowerCase()}`,
   });
   chip.append(
-    el('div', { className: 'match-player-chip__name' }, [player.name]),
+    el('div', {
+      className: 'match-player-chip__name',
+      title: player.name,
+    }, [player.name]),
     el('div', { className: 'match-player-chip__meta' }, [meta])
   );
   return chip;

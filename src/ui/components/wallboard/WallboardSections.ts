@@ -293,8 +293,9 @@ export function renderWallboardQueue(
   return section;
 }
 
-function buildTopTenEnterAlerts(rankings: PublicRankingRow[]): string[] {
-  return processWallboardRankAlerts(rankings).map((alert) => alert.message);
+function buildTopTenHighlight(rankings: PublicRankingRow[]): string | null {
+  const highlight = processWallboardRankAlerts(rankings);
+  return highlight?.message ?? null;
 }
 
 function rankBadgeClass(rank: number): string {
@@ -323,14 +324,17 @@ export function renderWallboardRankings(rankings: PublicRankingRow[]): HTMLEleme
     return section;
   }
 
-  const alerts = buildTopTenEnterAlerts(rankings);
-  if (alerts.length > 0) {
-    const alertBox = el('div', { className: 'live-wallboard__ranking-alerts' });
-    for (const message of alerts) {
-      alertBox.append(el('p', { className: 'live-wallboard__ranking-alert' }, [message]));
-    }
-    section.append(alertBox);
+  const highlight = buildTopTenHighlight(rankings);
+  const highlightBanner = el('div', {
+    className: 'live-wallboard__rank-highlight',
+    ...(highlight ? {} : { 'aria-hidden': 'true' }),
+  });
+  if (highlight) {
+    highlightBanner.textContent = highlight;
+  } else {
+    highlightBanner.classList.add('is-empty');
   }
+  section.append(highlightBanner);
 
   const table = el('table', { className: 'live-wallboard__rankings' });
   const thead = el('thead');

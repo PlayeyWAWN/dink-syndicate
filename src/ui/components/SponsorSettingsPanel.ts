@@ -2,7 +2,11 @@ import { createId } from '@/modules/matchmaking/create-id';
 import { el } from '@/lib/dom-utils';
 import { isAppOwner } from '@/modules/auth/isAppOwner';
 import { sponsorConfigService } from '@/modules/live/SponsorConfigService';
-import { uploadSponsorLogo, deleteSponsorLogoByUrl, isManagedSponsorLogoUrl } from '@/modules/live/SponsorUploadService';
+import {
+  uploadSponsorLogo,
+  deleteSponsorLogoByUrl,
+  isManagedSponsorLogoUrl,
+} from '@/modules/live/SponsorUploadService';
 import { slugifySponsorName } from '@/modules/live/sponsor-slug';
 import { useSessionStore } from '@/stores/sessionStore';
 import { SponsorConfig, SponsorEntry } from '@/types/live';
@@ -14,6 +18,12 @@ function normalizeLinkUrl(value: string): string | undefined {
   if (!trimmed) return undefined;
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function truncateLinkMeta(linkUrl: string | undefined): string {
+  const trimmed = linkUrl?.trim();
+  if (!trimmed) return 'No link';
+  return trimmed.length <= 48 ? trimmed : `${trimmed.slice(0, 47)}…`;
 }
 
 export function renderSponsorSettingsPanel(): HTMLElement | null {
@@ -30,6 +40,8 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
 
   let config: SponsorConfig = { sponsorsEnabled: false, sponsors: [], updatedAt: 0 };
   let lastRenderedSnapshot = '';
+  let editingId: string | null = null;
+  let pendingLogoFile: File | null = null;
 
   const enabledToggle = el('input', { type: 'checkbox', id: 'sponsors-enabled' }) as HTMLInputElement;
   const enabledLabel = el('label', { className: 'sponsor-settings__toggle', for: 'sponsors-enabled' }, [
@@ -37,57 +49,89 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
     el('span', {}, [' Show sponsors on Live Wallboard']),
   ]);
 
+  const statsLine = el('p', { className: 'sponsor-settings__stats' }, ['0 sponsors']);
   const list = el('div', { className: 'sponsor-settings__list' });
+  const addBtn = el('button', { type: 'button', className: 'btn btn-secondary btn-small' }, [
+    '+ Add sponsor',
+  ]);
   const preview = el('div', { className: 'sponsor-settings__preview' });
-  const addBtn = el('button', { type: 'button', className: 'btn btn-secondary' }, ['Add sponsor']);
+  const statusLine = el('p', { className: 'sponsor-settings__status' }, ['']);
+
+  const dialog = el('dialog', {
+    className: 'sponsor-settings__dialog queue-dialog',
+  }) as HTMLDialogElement;
+  const dialogTitle = el('h2', { className: 'queue-dialog__title' }, ['Add sponsor']);
+  const nameInput = el('input', {
+    type: 'text',
+    className: 'settings-input',
+    placeholder: 'Sponsor name',
+    maxlength: '80',
+  }) as HTMLInputElement;
+  const linkInput = el('input', {
+    type: 'text',
+    className: 'settings-input',
+    placeholder: 'Link URL (optional)',
+    maxlength: '500',
+  }) as HTMLInputElement;
+  const fileInput = el('input', { type: 'file', accept: 'image/*' }) as HTMLInputElement;
+  const logoPreview = el('img', {
+    className: 'sponsor-settings__dialog-preview',
+    alt: '',
+    hidden: 'true',
+  }) as HTMLImageElement;
+  const uploadStatus = el('span', { className: 'sponsor-settings__upload-status' }, ['']);
+  const dialogError = el('p', { className: 'sponsor-settings__dialog-error' }, ['']);
+
+  const cancelBtn = el('button', { type: 'button', className: 'btn btn-secondary' }, ['Cancel']);
+  const saveDialogBtn = el('button', { type: 'button', className: 'btn btn-primary' }, ['Save sponsor']);
+
+  const dialogActions = el('div', { className: 'queue-dialog__actions' });
+  dialogActions.append(cancelBtn, saveDialogBtn);
+
+  const chooseFileBtn = el('button', { type: 'button', className: 'btn btn-secondary btn-small' }, [
+    'Choose image',
+  ]);
+  chooseFileBtn.addEventListener('click', () => fileInput.click());
+
+  const dialogForm = el('div', { className: 'queue-dialog__form sponsor-settings__dialog-form' });
+  dialogForm.append(
+    dialogTitle,
+    el('label', { className: 'sponsor-settings__field-label' }, ['Sponsor name']),
+    nameInput,
+    el('label', { className: 'sponsor-settings__field-label' }, ['Logo']),
+    logoPreview,
+    el('div', { className: 'sponsor-settings__file-row' }, [chooseFileBtn, fileInput, uploadStatus]),
+    el('label', { className: 'sponsor-settings__field-label' }, ['Sponsor link (optional)']),
+    linkInput,
+    dialogError,
+    dialogActions
+  );
+  dialog.append(dialogForm);
+  fileInput.hidden = true;
 
   const renderPreview = (): void => {
     preview.replaceChildren(el('p', { className: 'sponsor-settings__preview-label' }, ['Preview grid']));
     const grid = el('div', { className: 'sponsor-settings__grid' });
+    const withLogos = config.sponsors.filter((sponsor) => sponsor.logoUrl);
 
-    if (config.sponsors.length === 0) {
+    if (withLogos.length === 0) {
       grid.append(el('p', { className: 'sponsor-settings__preview-empty' }, ['No sponsor logos yet.']));
-    }
-
-    for (const sponsor of config.sponsors) {
-      if (!sponsor.logoUrl) continue;
-
-      const index = config.sponsors.findIndex((s) => s.id === sponsor.id);
-      const item = el('div', { className: 'sponsor-settings__grid-item' });
-      item.append(
-        el('img', {
-          src: sponsor.logoUrl,
-          alt: sponsor.name || 'Sponsor logo',
-          className: 'sponsor-settings__preview-logo',
-        })
-      );
-
-      const deleteLogoBtn = el(
-        'button',
-        {
-          type: 'button',
-          className: 'sponsor-settings__grid-delete btn btn-small btn-danger',
-          title: 'Delete logo from Storage',
-        },
-        ['Delete']
-      );
-      deleteLogoBtn.addEventListener('click', async () => {
-        const label = sponsor.name.trim() || 'this sponsor logo';
-        if (!confirm(`Delete ${label}? This removes the sponsor and deletes the file from Storage.`)) return;
-        try {
-          deleteLogoBtn.disabled = true;
-          await removeSponsorAtIndex(index, sponsor.logoUrl);
-        } catch (error) {
-          alert(error instanceof Error ? error.message : 'Delete failed');
-          deleteLogoBtn.disabled = false;
-        }
-      });
-
-      item.append(deleteLogoBtn);
-      grid.append(item);
+    } else {
+      for (const sponsor of withLogos) {
+        const item = el('div', { className: 'sponsor-settings__grid-item' });
+        item.append(
+          el('img', {
+            src: sponsor.logoUrl,
+            alt: sponsor.name || 'Sponsor logo',
+            className: 'sponsor-settings__preview-logo',
+          })
+        );
+        grid.append(item);
+      }
     }
 
     preview.append(grid);
+    preview.hidden = withLogos.length === 0;
   };
 
   const saveConfig = async (): Promise<void> => {
@@ -127,121 +171,84 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
       })),
     });
 
-  const renderSponsorRow = (sponsor: SponsorEntry, index: number): void => {
-    const row = el('div', { className: 'sponsor-settings__row' });
+  const findSponsorIndex = (id: string): number =>
+    config.sponsors.findIndex((sponsor) => sponsor.id === id);
 
-    const nameInput = el('input', {
-      type: 'text',
-      className: 'settings-input',
-      value: sponsor.name,
-      placeholder: 'Sponsor name',
-    }) as HTMLInputElement;
+  const resetDialogForm = (): void => {
+    editingId = null;
+    pendingLogoFile = null;
+    nameInput.value = '';
+    linkInput.value = '';
+    fileInput.value = '';
+    logoPreview.hidden = true;
+    logoPreview.removeAttribute('src');
+    uploadStatus.textContent = '';
+    dialogError.textContent = '';
+    dialogTitle.textContent = 'Add sponsor';
+  };
 
-    const urlInput = el('input', {
-      type: 'url',
-      className: 'settings-input',
-      value: sponsor.logoUrl,
-      placeholder: 'Logo URL (optional if uploaded)',
-    }) as HTMLInputElement;
+  const openDialog = (sponsorId: string | null): void => {
+    resetDialogForm();
+    if (sponsorId) {
+      const sponsor = config.sponsors.find((entry) => entry.id === sponsorId);
+      if (!sponsor) return;
+      editingId = sponsorId;
+      dialogTitle.textContent = 'Edit sponsor';
+      nameInput.value = sponsor.name;
+      linkInput.value = sponsor.linkUrl ?? '';
+      if (sponsor.logoUrl) {
+        logoPreview.src = sponsor.logoUrl;
+        logoPreview.hidden = false;
+      }
+    }
+    dialog.showModal();
+  };
 
-    const linkInput = el('input', {
-      type: 'text',
-      className: 'settings-input',
-      value: sponsor.linkUrl ?? '',
-      placeholder: 'Link URL (optional)',
-    }) as HTMLInputElement;
+  const closeDialog = (): void => {
+    dialog.close();
+    resetDialogForm();
+  };
 
-    const fileInput = el('input', { type: 'file', accept: 'image/*' }) as HTMLInputElement;
-    const uploadStatus = el('span', { className: 'sponsor-settings__upload-status' }, ['']);
+  cancelBtn.addEventListener('click', () => closeDialog());
+  dialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
 
-    const saveRow = el('button', { type: 'button', className: 'btn btn-small' }, ['Save']);
-    const removeRow = el('button', { type: 'button', className: 'btn btn-small btn-danger' }, ['Remove sponsor']);
-    const deleteLogoBtn = el(
-      'button',
-      { type: 'button', className: 'btn btn-small btn-danger sponsor-settings__delete-logo' },
-      ['Delete logo']
-    );
-    deleteLogoBtn.hidden = !sponsor.logoUrl;
-
-    const resolveLogoUrl = (): string =>
-      urlInput.value.trim() || config.sponsors[index]?.logoUrl || sponsor.logoUrl;
-
-    const syncDeleteLogoVisibility = (): void => {
-      deleteLogoBtn.hidden = !resolveLogoUrl();
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    pendingLogoFile = file ?? null;
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        logoPreview.src = reader.result;
+        logoPreview.hidden = false;
+      }
     };
+    reader.readAsDataURL(file);
+  });
 
-    saveRow.addEventListener('click', async () => {
-      const name = nameInput.value.trim();
-      const logoUrl = resolveLogoUrl();
-      if (!name || !logoUrl) {
-        alert('Sponsor name and logo are required. Enter a name and upload an image, or paste a logo URL.');
-        return;
-      }
-      config.sponsors[index] = {
-        ...sponsor,
-        name,
-        logoUrl,
-        linkUrl: normalizeLinkUrl(linkInput.value),
-      };
-      try {
-        saveRow.disabled = true;
-        await saveConfig();
-        renderPreview();
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Save failed');
-      } finally {
-        saveRow.disabled = false;
-      }
-    });
+  saveDialogBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    if (!name) {
+      dialogError.textContent = 'Sponsor name is required.';
+      return;
+    }
 
-    removeRow.addEventListener('click', async () => {
-      const label = nameInput.value.trim() || sponsor.name.trim() || 'this sponsor';
-      if (!confirm(`Remove ${label}? This deletes the logo from Firebase Storage.`)) return;
-      try {
-        removeRow.disabled = true;
-        deleteLogoBtn.disabled = true;
-        await removeSponsorAtIndex(index, resolveLogoUrl());
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Remove failed');
-      } finally {
-        removeRow.disabled = false;
-        deleteLogoBtn.disabled = false;
-      }
-    });
+    const existingIndex = editingId ? findSponsorIndex(editingId) : -1;
+    const existing = existingIndex >= 0 ? config.sponsors[existingIndex] : null;
+    const previousLogo = existing?.logoUrl ?? '';
 
-    deleteLogoBtn.addEventListener('click', async () => {
-      const logoUrl = resolveLogoUrl();
-      if (!logoUrl) return;
-      const label = nameInput.value.trim() || sponsor.name.trim() || 'this logo';
-      if (!confirm(`Delete ${label} from Storage? The sponsor entry will be removed.`)) return;
-      try {
-        deleteLogoBtn.disabled = true;
-        removeRow.disabled = true;
-        await removeSponsorAtIndex(index, logoUrl);
-      } catch (error) {
-        alert(error instanceof Error ? error.message : 'Delete failed');
-      } finally {
-        deleteLogoBtn.disabled = false;
-        removeRow.disabled = false;
-      }
-    });
+    try {
+      saveDialogBtn.disabled = true;
+      dialogError.textContent = '';
+      uploadStatus.textContent = pendingLogoFile ? 'Uploading…' : '';
 
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files?.[0];
-      const name = nameInput.value.trim();
-      if (!file) return;
-      if (!name) {
-        alert('Enter sponsor name before uploading.');
-        fileInput.value = '';
-        return;
-      }
-      const previousLogo = resolveLogoUrl();
-      try {
-        uploadStatus.textContent = 'Uploading…';
-        saveRow.disabled = true;
-        deleteLogoBtn.disabled = true;
+      let logoUrl = existing?.logoUrl ?? '';
+      if (pendingLogoFile) {
         const slugs = config.sponsors.map((s) => slugifySponsorName(s.name));
-        const logoUrl = await uploadSponsorLogo(file, name, slugs);
+        logoUrl = await uploadSponsorLogo(pendingLogoFile, name, slugs);
         if (
           previousLogo &&
           previousLogo !== logoUrl &&
@@ -249,63 +256,119 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
         ) {
           await deleteLogoFromStorage(previousLogo);
         }
-        urlInput.value = logoUrl;
-        config.sponsors[index] = {
-          ...sponsor,
-          name,
-          logoUrl,
-          linkUrl: normalizeLinkUrl(linkInput.value),
-        };
-        syncDeleteLogoVisibility();
-        uploadStatus.textContent = 'Uploaded';
-        await saveConfig();
-        renderPreview();
-      } catch (error) {
-        uploadStatus.textContent = '';
-        alert(error instanceof Error ? error.message : 'Upload failed');
-      } finally {
-        saveRow.disabled = false;
-        deleteLogoBtn.disabled = false;
-        fileInput.value = '';
       }
-    });
 
-    urlInput.addEventListener('input', syncDeleteLogoVisibility);
+      if (!logoUrl) {
+        dialogError.textContent = 'Upload a logo image before saving.';
+        return;
+      }
 
-    row.append(
-      nameInput,
-      urlInput,
-      linkInput,
-      fileInput,
-      uploadStatus,
-      saveRow,
-      deleteLogoBtn,
-      removeRow
-    );
-    list.append(row);
-  };
+      const entry: SponsorEntry = {
+        id: editingId ?? createId('sponsor'),
+        name,
+        logoUrl,
+        linkUrl: normalizeLinkUrl(linkInput.value),
+        sortOrder: existing?.sortOrder ?? config.sponsors.length,
+      };
+
+      if (existingIndex >= 0) {
+        config.sponsors[existingIndex] = entry;
+      } else {
+        config.sponsors.push(entry);
+      }
+
+      await saveConfig();
+      closeDialog();
+      renderList();
+    } catch (error) {
+      dialogError.textContent = error instanceof Error ? error.message : 'Save failed';
+    } finally {
+      saveDialogBtn.disabled = false;
+      uploadStatus.textContent = '';
+    }
+  });
 
   const renderList = (): void => {
+    const sponsors = [...config.sponsors].sort((a, b) => a.sortOrder - b.sortOrder);
+    statsLine.textContent = `${sponsors.length} sponsor${sponsors.length === 1 ? '' : 's'}`;
+    addBtn.hidden = sponsors.length >= MAX_SPONSORS;
     list.replaceChildren();
-    config.sponsors.forEach((sponsor, index) => renderSponsorRow(sponsor, index));
-    addBtn.hidden = config.sponsors.length >= MAX_SPONSORS;
+
+    if (sponsors.length === 0) {
+      list.append(
+        el('p', { className: 'sponsor-settings__empty' }, [
+          'No sponsors yet. Tap ',
+          el('strong', {}, ['+ Add sponsor']),
+          ' to upload a logo.',
+        ])
+      );
+    } else {
+      for (const sponsor of sponsors) {
+        const index = findSponsorIndex(sponsor.id);
+        const row = el('div', { className: 'sponsor-settings__row' });
+
+        if (sponsor.logoUrl) {
+          row.append(
+            el('img', {
+              className: 'sponsor-settings__row-thumb',
+              src: sponsor.logoUrl,
+              alt: '',
+            })
+          );
+        } else {
+          row.append(el('div', { className: 'sponsor-settings__row-thumb is-empty' }));
+        }
+
+        const info = el('div', { className: 'sponsor-settings__row-info' });
+        info.append(
+          el('div', { className: 'sponsor-settings__row-name' }, [sponsor.name || 'Unnamed sponsor']),
+          el('div', { className: 'sponsor-settings__row-meta' }, [truncateLinkMeta(sponsor.linkUrl)])
+        );
+
+        const actions = el('div', { className: 'sponsor-settings__row-actions' });
+        const editBtn = el('button', { type: 'button', className: 'btn btn-secondary btn-small' }, [
+          'Edit',
+        ]);
+        const deleteBtn = el('button', {
+          type: 'button',
+          className: 'btn btn-secondary btn-small sponsor-settings__delete-btn',
+        }, ['Delete']);
+
+        editBtn.addEventListener('click', () => openDialog(sponsor.id));
+        deleteBtn.addEventListener('click', async () => {
+          const label = sponsor.name.trim() || 'this sponsor';
+          if (!confirm(`Remove ${label}? This deletes the logo from Firebase Storage.`)) return;
+          try {
+            deleteBtn.disabled = true;
+            await removeSponsorAtIndex(index, sponsor.logoUrl);
+          } catch (error) {
+            alert(error instanceof Error ? error.message : 'Delete failed');
+            deleteBtn.disabled = false;
+          }
+        });
+
+        actions.append(editBtn, deleteBtn);
+        row.append(info, actions);
+        list.append(row);
+      }
+    }
+
     renderPreview();
   };
 
   enabledToggle.addEventListener('change', async () => {
     config.sponsorsEnabled = enabledToggle.checked;
-    await saveConfig();
+    try {
+      await saveConfig();
+      statusLine.textContent = 'Saved.';
+    } catch (error) {
+      statusLine.textContent = error instanceof Error ? error.message : 'Save failed';
+    }
   });
 
   addBtn.addEventListener('click', () => {
     if (config.sponsors.length >= MAX_SPONSORS) return;
-    config.sponsors.push({
-      id: createId('sponsor'),
-      name: '',
-      logoUrl: '',
-      sortOrder: config.sponsors.length,
-    });
-    renderList();
+    openDialog(null);
   });
 
   const unsub = sponsorConfigService.subscribe((next) => {
@@ -323,7 +386,7 @@ export function renderSponsorSettingsPanel(): HTMLElement | null {
     }
   });
 
-  section.append(enabledLabel, list, addBtn, preview);
+  section.append(enabledLabel, statsLine, addBtn, list, preview, statusLine, dialog);
   section.addEventListener('DOMNodeRemovedFromDocument', () => unsub());
 
   return section;

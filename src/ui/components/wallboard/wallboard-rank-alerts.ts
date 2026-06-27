@@ -1,14 +1,13 @@
 import { PublicRankingRow } from '@/types/live';
 
-const RANK_ALERT_TTL_MS = 45_000;
+const HIGHLIGHT_TTL_MS = 20_000;
 
-export interface WallboardRankAlert {
-  playerId: string;
+export interface WallboardRankHighlight {
   message: string;
   expiresAt: number;
 }
 
-let activeAlerts: WallboardRankAlert[] = [];
+let currentHighlight: WallboardRankHighlight | null = null;
 let previousRankings: PublicRankingRow[] = [];
 
 function stripDeltas(rows: PublicRankingRow[]): PublicRankingRow[] {
@@ -28,6 +27,11 @@ function pickTemplate(templates: string[], seed: string): string {
 
 function formatRank(rank: number): string {
   return `#${rank}`;
+}
+
+interface RankHighlightCandidate {
+  priority: number;
+  message: string;
 }
 
 function buildNewEntrantMessage(row: PublicRankingRow, previous: PublicRankingRow[]): string {
@@ -58,10 +62,7 @@ function buildNewEntrantMessage(row: PublicRankingRow, previous: PublicRankingRo
   );
 }
 
-function buildClimbMessage(
-  row: PublicRankingRow,
-  previous: PublicRankingRow[]
-): string {
+function buildClimbMessage(row: PublicRankingRow, previous: PublicRankingRow[]): string {
   const prevRow = previous.find((entry) => entry.playerId === row.playerId);
   if (!prevRow || row.rank >= prevRow.rank) return '';
 
@@ -82,83 +83,142 @@ function buildClimbMessage(
     );
   }
 
+  const diff = prevRow.rank - row.rank;
+  if (diff > 1) {
+    return `${row.name} climbed ${diff} spots to ${formatRank(row.rank)}!`;
+  }
+
   return pickTemplate(
     [
       `${row.name} climbs to ${formatRank(row.rank)}!`,
       `${row.name} rockets up to ${formatRank(row.rank)}!`,
-      `${row.name} surges to ${formatRank(row.rank)} on the board!`,
+      `${row.name} moved up to ${formatRank(row.rank)}!`,
     ],
     `${row.playerId}-up-${row.rank}`
   );
 }
 
-function buildRankCommentary(
-  row: PublicRankingRow,
+function collectRankHighlights(
+  rankings: PublicRankingRow[],
   previous: PublicRankingRow[]
-): string | null {
-  if (!row.delta || row.delta === 'same') return null;
+): RankHighlightCandidate[] {
+  const highlights: RankHighlightCandidate[] = [];
+  const prevLeader = previous[0];
+  const nextLeader = rankings[0];
 
-  if (row.delta === 'new') {
-    return buildNewEntrantMessage(row, previous) || null;
+  if (
+    nextLeader &&
+    prevLeader &&
+    nextLeader.playerId !== prevLeader.playerId &&
+    nextLeader.gamesPlayed > 0
+  ) {
+    highlights.push({
+      priority: 6,
+      message: `${nextLeader.name} takes #1!`,
+    });
   }
 
-  if (row.delta === 'up') {
-    return buildClimbMessage(row, previous) || null;
-  }
+  for (const row of rankings) {
+    if (!row.delta || row.delta === 'same') continue;
 
-  if (row.delta === 'down') {
-    const prevRow = previous.find((entry) => entry.playerId === row.playerId);
-    if (!prevRow || row.rank <= prevRow.rank) return null;
-    return pickTemplate(
-      [
-        `${row.name} slides down to ${formatRank(row.rank)}.`,
-        `${row.name} drops to ${formatRank(row.rank)} on the board.`,
-      ],
-      `${row.playerId}-down-${row.rank}`
-    );
-  }
+    if (row.delta === 'new') {
+      highlights.push({ priority: 4, message: buildNewEntrantMessage(row, previous) });
+      continue;
+    }
 
-  return null;
-}
+    if (row.delta === 'up') {
+      const message = buildClimbMessage(row, previous);
+      if (message) {
+        highlights.push({ priority: 5, message });
+      }
+      continue;
+    }
 
-/** Track ranking moves and keep commentary alerts visible for several seconds. */
-export function processWallboardRankAlerts(rankings: PublicRankingRow[]): WallboardRankAlert[] {
-  const now = Date.now();
-  const previous = previousRankings;
-
-  const hasPlayed = rankings.some((row) => row.gamesPlayed > 0);
-  const hasPrevious = previous.some((row) => row.gamesPlayed > 0);
-
-  if (hasPlayed && hasPrevious) {
-    for (const row of rankings) {
-      const message = buildRankCommentary(row, previous);
-      if (!message) continue;
-
-      const alertId = `${row.playerId}-${row.rank}-${row.delta ?? 'move'}`;
-      const alreadyActive = activeAlerts.some(
-        (alert) => alert.playerId === alertId && alert.expiresAt > now
-      );
-      if (alreadyActive) continue;
-
-      activeAlerts.push({
-        playerId: alertId,
-        message,
-        expiresAt: now + RANK_ALERT_TTL_MS,
+    if (row.delta === 'down') {
+      const prevRow = previous.find((entry) => entry.playerId === row.playerId);
+      if (!prevRow || row.rank <= prevRow.rank) continue;
+      highlights.push({
+        priority: 2,
+        message: pickTemplate(
+          [
+            `${row.name} slides down to ${formatRank(row.rank)}.`,
+            `${row.name} drops to ${formatRank(row.rank)} on the board.`,
+          ],
+          `${row.playerId}-down-${row.rank}`
+        ),
       });
     }
   }
 
+  const currentIds = new Set(rankings.map((row) => row.playerId));
+  for (const prev of previous) {
+    if (prev.rank <= 10 && !currentIds.has(prev.playerId)) {
+      highlights.push({
+        priority: 3,
+        message: `${prev.name} dropped out of the Top 10`,
+      });
+    }
+  }
+
+  return highlights;
+}
+
+function pickBestHighlight(candidates: RankHighlightCandidate[]): string | null {
+  if (candidates.length === 0) return null;
+  const best = candidates.reduce((acc, candidate) =>
+    candidate.priority > acc.priority ? candidate : acc
+  );
+  return best.message;
+}
+
+function pruneExpiredHighlight(now: number): void {
+  if (currentHighlight && currentHighlight.expiresAt <= now) {
+    currentHighlight = null;
+  }
+}
+
+function rankingsSnapshotKey(rows: PublicRankingRow[]): string {
+  return rows
+    .map(
+      (row) =>
+        `${row.playerId}:${row.rank}:${row.wins}:${row.losses}:${row.gamesPlayed}:${row.points}`
+    )
+    .join('|');
+}
+
+/**
+ * Track the latest ranking move and show one highlight banner (Smash Syndicate style).
+ * New events replace the previous message instead of stacking.
+ */
+export function processWallboardRankAlerts(rankings: PublicRankingRow[]): WallboardRankHighlight | null {
+  const now = Date.now();
+  pruneExpiredHighlight(now);
+
+  const previous = previousRankings;
+  const hasPlayed = rankings.some((row) => row.gamesPlayed > 0);
+  const hasPrevious = previous.some((row) => row.gamesPlayed > 0);
+  const rankingsChanged = rankingsSnapshotKey(previous) !== rankingsSnapshotKey(rankings);
+
+  if (hasPlayed && hasPrevious && rankingsChanged) {
+    const message = pickBestHighlight(collectRankHighlights(rankings, previous));
+    if (message) {
+      currentHighlight = { message, expiresAt: now + HIGHLIGHT_TTL_MS };
+    }
+  }
+
   previousRankings = stripDeltas(rankings);
-  activeAlerts = activeAlerts.filter((alert) => alert.expiresAt > now);
-  return activeAlerts;
+  pruneExpiredHighlight(now);
+  return currentHighlight;
 }
 
 export function hasActiveWallboardRankAlerts(): boolean {
-  return activeAlerts.some((alert) => alert.expiresAt > Date.now());
+  const now = Date.now();
+  pruneExpiredHighlight(now);
+  return currentHighlight !== null;
 }
 
-/** Clears in-memory alerts (used by tests). */
+/** Clears in-memory highlight (used by tests). */
 export function resetWallboardRankAlerts(): void {
-  activeAlerts = [];
+  currentHighlight = null;
   previousRankings = [];
 }

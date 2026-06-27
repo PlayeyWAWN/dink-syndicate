@@ -84,18 +84,38 @@
   font-size: 0.9rem;
 }
 
-.live-wallboard__ranking-alerts {
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.45);
-  border-radius: 10px;
+.live-wallboard__rank-highlight {
+  min-height: 44px;
   margin-bottom: 0.85rem;
-  padding: 0.65rem 0.85rem;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.18), rgba(255, 152, 0, 0.12));
+  border: 1px solid rgba(255, 152, 0, 0.35);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #fcd34d;
+  animation: live-wallboard-highlight-in 0.45s ease;
 }
 
-.live-wallboard__ranking-alert {
-  color: #fcd34d;
-  font-weight: 600;
-  margin: 0.15rem 0;
+.live-wallboard__rank-highlight.is-empty {
+  visibility: hidden;
+  min-height: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-color: transparent;
+  background: transparent;
+  animation: none;
+}
+
+@keyframes live-wallboard-highlight-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .live-wallboard__rankings-wrap {
