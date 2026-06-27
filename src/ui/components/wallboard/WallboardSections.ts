@@ -2,7 +2,8 @@ import { el } from '@/lib/dom-utils';
 import { formatMatchDuration, mountLiveTimers } from '@/lib/match-timer';
 import { splitTeams } from '@/lib/format-utils';
 import { paginateItems } from '@/modules/stats/MatchHistoryService';
-import { PublicMatch, PublicPlayer, PublicQueueEntry, PublicRankingRow, SponsorConfig, WALLBOARD_MATCH_HISTORY_PAGE_SIZE } from '@/types/live';
+import { gridCellCountForSlots } from '@/modules/live/SponsorConfigService';
+import { PublicMatch, PublicPlayer, PublicQueueEntry, PublicRankingRow, SponsorConfig, SponsorEntry, WALLBOARD_MATCH_HISTORY_PAGE_SIZE } from '@/types/live';
 import { renderWallboardMatchCourtBoard } from '@/ui/components/wallboard/WallboardMatchCourtBoard';
 import {
   findPublicPlayer,
@@ -182,6 +183,35 @@ function normalizeSponsorHref(linkUrl: string | undefined): string | undefined {
   return `https://${trimmed}`;
 }
 
+function renderWallboardSponsorCard(sponsor: SponsorEntry): HTMLElement {
+  const img = el('img', {
+    className: 'live-wallboard__sponsor-logo',
+    src: sponsor.logoUrl,
+    alt: sponsor.name,
+    loading: 'lazy',
+  });
+
+  const well = el('div', { className: 'live-wallboard__sponsor-logo-well' }, [img]);
+  const card = el('div', { className: 'live-wallboard__sponsor-card' }, [well]);
+  if (sponsor.name.trim()) {
+    card.append(el('div', { className: 'live-wallboard__sponsor-name' }, [sponsor.name.trim()]));
+  }
+
+  const href = normalizeSponsorHref(sponsor.linkUrl);
+  if (href) {
+    const link = el('a', {
+      className: 'live-wallboard__sponsor-link',
+      href,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+    });
+    link.append(card);
+    return link;
+  }
+
+  return card;
+}
+
 export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | null {
   if (!config.sponsorsEnabled || config.sponsors.length === 0) return null;
 
@@ -196,37 +226,34 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
   );
   section.append(header);
 
-  const scroll = el('div', { className: 'live-wallboard__sponsor-scroll' });
-  for (const sponsor of config.sponsors.sort((a, b) => a.sortOrder - b.sortOrder)) {
-    const img = el('img', {
-      className: 'live-wallboard__sponsor-logo',
-      src: sponsor.logoUrl,
-      alt: sponsor.name,
-      loading: 'lazy',
+  const sponsors = [...config.sponsors].sort((a, b) => a.sortOrder - b.sortOrder);
+  const bySlot = new Map(sponsors.map((sponsor) => [sponsor.sortOrder, sponsor] as const));
+  const totalCells = gridCellCountForSlots(sponsors);
+
+  const grid = el('div', { className: 'live-wallboard__sponsor-grid' });
+  for (let slot = 0; slot < totalCells; slot++) {
+    const sponsor = bySlot.get(slot);
+    const cell = el('div', {
+      className: `live-wallboard__sponsor-slot${
+        sponsor ? '' : ' live-wallboard__sponsor-slot--empty'
+      }`,
     });
 
-    const well = el('div', { className: 'live-wallboard__sponsor-logo-well' }, [img]);
-    const card = el('div', { className: 'live-wallboard__sponsor-card' }, [well]);
-    if (sponsor.name.trim()) {
-      card.append(el('div', { className: 'live-wallboard__sponsor-name' }, [sponsor.name.trim()]));
+    if (sponsor) {
+      cell.append(renderWallboardSponsorCard(sponsor));
+    } else {
+      cell.append(
+        el('div', { className: 'live-wallboard__sponsor-card live-wallboard__sponsor-card--spacer' }, [
+          el('div', { className: 'live-wallboard__sponsor-logo-well' }),
+          el('div', { className: 'live-wallboard__sponsor-name' }, ['\u00a0']),
+        ])
+      );
     }
 
-    const href = normalizeSponsorHref(sponsor.linkUrl);
-    if (href) {
-      const link = el('a', {
-        className: 'live-wallboard__sponsor-link',
-        href,
-        target: '_blank',
-        rel: 'noopener noreferrer',
-      });
-      link.append(card);
-      scroll.append(link);
-    } else {
-      scroll.append(card);
-    }
+    grid.append(cell);
   }
 
-  section.append(scroll);
+  section.append(grid);
   return section;
 }
 

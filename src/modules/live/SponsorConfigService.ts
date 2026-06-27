@@ -11,6 +11,32 @@ const DEFAULT_CONFIG: SponsorConfig = {
   updatedAt: Date.now(),
 };
 
+export const MAX_SPONSOR_SLOTS = 18;
+export const SPONSORS_PER_ROW = 6;
+const MAX_SLOT_INDEX = MAX_SPONSOR_SLOTS - 1;
+
+/** Lowest unused wallboard grid slot (0–17), or 18 when full. */
+export function findFirstFreeSlot(used: Set<number>): number {
+  for (let slot = 0; slot <= MAX_SLOT_INDEX; slot++) {
+    if (!used.has(slot)) return slot;
+  }
+  return MAX_SPONSOR_SLOTS;
+}
+
+/** Human-readable slot label, e.g. "Row 1 · Slot 3" (1-based). */
+export function formatSponsorSlotLabel(sortOrder: number): string {
+  const row = Math.floor(sortOrder / SPONSORS_PER_ROW) + 1;
+  const slot = (sortOrder % SPONSORS_PER_ROW) + 1;
+  return `Row ${row} · Slot ${slot}`;
+}
+
+/** Total grid cells to render through the last occupied row (multiple of 6). */
+export function gridCellCountForSlots(sponsors: SponsorEntry[]): number {
+  if (sponsors.length === 0) return 0;
+  const maxSlot = Math.max(...sponsors.map((s) => s.sortOrder));
+  return (Math.floor(maxSlot / SPONSORS_PER_ROW) + 1) * SPONSORS_PER_ROW;
+}
+
 export const sponsorConfigService = {
   async load(): Promise<SponsorConfig> {
     if (!isFirebaseEnabled()) return DEFAULT_CONFIG;
@@ -81,9 +107,26 @@ export const sponsorConfigService = {
   },
 
   normalizeSponsors(sponsors: SponsorEntry[]): SponsorEntry[] {
-    return sponsors
-      .slice(0, 18)
-      .map((s, index) => ({ ...s, sortOrder: index }))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const capped = sponsors.slice(0, MAX_SPONSOR_SLOTS);
+    const usedSlots = new Set<number>();
+    const result: SponsorEntry[] = [];
+
+    for (const sponsor of capped) {
+      let slot = sponsor.sortOrder;
+      if (
+        !Number.isInteger(slot) ||
+        slot < 0 ||
+        slot > MAX_SLOT_INDEX ||
+        usedSlots.has(slot)
+      ) {
+        slot = findFirstFreeSlot(usedSlots);
+      }
+      if (slot > MAX_SLOT_INDEX) continue;
+
+      usedSlots.add(slot);
+      result.push({ ...sponsor, sortOrder: slot });
+    }
+
+    return result.sort((a, b) => a.sortOrder - b.sortOrder);
   },
 };
