@@ -39,9 +39,13 @@ export function renderWallboardPlayerChip(
 
   if (options?.courtLayout) {
     const gender = player.gender ?? 'male';
-    const iconWrap = el('div', { className: 'match-player-chip__icon', 'aria-hidden': 'true' });
-    mountAppIcon(iconWrap, genderAppIconId(gender));
-    chip.append(
+    const iconWrap = el('div', { className: 'match-player-chip__icon-wrap' });
+    const icon = el('div', { className: 'match-player-chip__icon', 'aria-hidden': 'true' });
+    mountAppIcon(icon, genderAppIconId(gender));
+    iconWrap.append(icon);
+
+    const stack = el('div', { className: 'live-wallboard__player-chip-stack' });
+    stack.append(
       iconWrap,
       el('div', {
         className: 'match-player-chip__name',
@@ -49,6 +53,7 @@ export function renderWallboardPlayerChip(
       }, [player.name]),
       el('div', { className: 'match-player-chip__meta match-player-chip__meta--rating' }, [rating])
     );
+    chip.append(stack);
     return chip;
   }
 

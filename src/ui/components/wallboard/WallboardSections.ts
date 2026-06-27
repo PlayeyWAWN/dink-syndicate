@@ -186,9 +186,17 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
   if (!config.sponsorsEnabled || config.sponsors.length === 0) return null;
 
   const section = el('section', { className: 'live-wallboard__section live-wallboard__sponsors' });
-  section.append(el('h2', { className: 'live-wallboard__section-title' }, ['Sponsors']));
 
-  const grid = el('div', { className: 'live-wallboard__sponsor-grid' });
+  const header = el('div', { className: 'live-wallboard__sponsors-header' });
+  header.append(
+    el('h2', { className: 'live-wallboard__section-title live-wallboard__sponsors-title' }, [
+      'Sponsored by',
+    ]),
+    el('span', { className: 'live-wallboard__sponsors-hint' }, ['Tap a logo to visit their page'])
+  );
+  section.append(header);
+
+  const scroll = el('div', { className: 'live-wallboard__sponsor-scroll' });
   for (const sponsor of config.sponsors.sort((a, b) => a.sortOrder - b.sortOrder)) {
     const img = el('img', {
       className: 'live-wallboard__sponsor-logo',
@@ -196,6 +204,12 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
       alt: sponsor.name,
       loading: 'lazy',
     });
+
+    const well = el('div', { className: 'live-wallboard__sponsor-logo-well' }, [img]);
+    const card = el('div', { className: 'live-wallboard__sponsor-card' }, [well]);
+    if (sponsor.name.trim()) {
+      card.append(el('div', { className: 'live-wallboard__sponsor-name' }, [sponsor.name.trim()]));
+    }
 
     const href = normalizeSponsorHref(sponsor.linkUrl);
     if (href) {
@@ -205,14 +219,14 @@ export function renderWallboardSponsors(config: SponsorConfig): HTMLElement | nu
         target: '_blank',
         rel: 'noopener noreferrer',
       });
-      link.append(img);
-      grid.append(link);
+      link.append(card);
+      scroll.append(link);
     } else {
-      grid.append(el('div', { className: 'live-wallboard__sponsor-item' }, [img]));
+      scroll.append(card);
     }
   }
 
-  section.append(grid);
+  section.append(scroll);
   return section;
 }
 
