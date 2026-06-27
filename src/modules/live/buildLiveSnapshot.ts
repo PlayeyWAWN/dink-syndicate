@@ -20,6 +20,7 @@ function toPublicPlayer(player: Player): PublicPlayer {
   return {
     id: player.id,
     name: player.name,
+    gender: player.gender,
     duprDoublesRating: player.dupr?.duprDoublesRating,
     gamesPlayed: player.gamesPlayed,
     wins: player.wins,

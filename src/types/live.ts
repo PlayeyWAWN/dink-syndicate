@@ -5,6 +5,7 @@ export const GameModeSchema = z.enum(['dupr_open_play', 'win_lose_stack', 'ladde
 export const PublicPlayerSchema = z.object({
   id: z.string(),
   name: z.string(),
+  gender: z.enum(['male', 'female']).optional(),
   duprDoublesRating: z.number().optional(),
   gamesPlayed: z.number().int().nonnegative(),
   wins: z.number().int().nonnegative(),

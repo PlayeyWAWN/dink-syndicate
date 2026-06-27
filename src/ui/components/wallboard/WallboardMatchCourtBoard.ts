@@ -38,7 +38,7 @@ export function renderWallboardMatchCourtBoard(
     if (!player && !playerId) continue;
 
     const wrap = el('div', { className: `match-court-board__pos ${pos.className}` });
-    wrap.append(renderWallboardPlayerChip(player, pos.team, { compact: true }));
+    wrap.append(renderWallboardPlayerChip(player, pos.team, { compact: true, courtLayout: true }));
     court.append(wrap);
   }
 

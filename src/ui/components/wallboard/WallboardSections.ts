@@ -58,6 +58,7 @@ function buildPlayerLookup(
     map.set(row.playerId, {
       id: row.playerId,
       name: row.name,
+      gender: existing?.gender,
       duprDoublesRating: row.duprDoublesRating ?? existing?.duprDoublesRating,
       gamesPlayed: row.gamesPlayed,
       wins: row.wins,

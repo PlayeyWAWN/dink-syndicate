@@ -217,6 +217,32 @@ export function hasActiveWallboardRankAlerts(): boolean {
   return currentHighlight !== null;
 }
 
+/** When the current highlight expires (ms since epoch), or null if none. */
+export function getWallboardRankHighlightExpiry(): number | null {
+  const now = Date.now();
+  pruneExpiredHighlight(now);
+  return currentHighlight?.expiresAt ?? null;
+}
+
+/** Update the highlight banner in place without re-rendering the wallboard. */
+export function syncWallboardRankHighlightDom(root: HTMLElement): void {
+  const now = Date.now();
+  pruneExpiredHighlight(now);
+  const banner = root.querySelector('.live-wallboard__rank-highlight');
+  if (!banner) return;
+
+  const message = currentHighlight?.message;
+  if (message) {
+    banner.textContent = message;
+    banner.classList.remove('is-empty');
+    banner.removeAttribute('aria-hidden');
+  } else {
+    banner.textContent = '';
+    banner.classList.add('is-empty');
+    banner.setAttribute('aria-hidden', 'true');
+  }
+}
+
 /** Clears in-memory highlight (used by tests). */
 export function resetWallboardRankAlerts(): void {
   currentHighlight = null;

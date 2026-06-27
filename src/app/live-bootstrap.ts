@@ -6,7 +6,10 @@ import { FIRESTORE_PATHS } from '@/modules/live/firestore-paths';
 import { startWallboardViewerPresence } from '@/modules/live/WallboardViewerPresenceService';
 import { sponsorConfigService } from '@/modules/live/SponsorConfigService';
 import { LiveSessionSnapshot, SponsorConfig } from '@/types/live';
-import { hasActiveWallboardRankAlerts } from '@/ui/components/wallboard/wallboard-rank-alerts';
+import {
+  getWallboardRankHighlightExpiry,
+  syncWallboardRankHighlightDom,
+} from '@/ui/components/wallboard/wallboard-rank-alerts';
 import {
   mountWallboardTimers,
   renderWallboardActiveMatches,
@@ -42,7 +45,23 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
   let presenceHandle: { stop: () => void } | null = null;
   let sponsorConfig: SponsorConfig = { sponsorsEnabled: false, sponsors: [], updatedAt: 0 };
   let lastSnapshot: LiveSessionSnapshot | null = null;
-  let alertRefreshTimer: number | null = null;
+  let highlightExpiryTimer: number | null = null;
+
+  const scheduleHighlightExpiry = (container: HTMLElement): void => {
+    if (highlightExpiryTimer) {
+      window.clearTimeout(highlightExpiryTimer);
+      highlightExpiryTimer = null;
+    }
+
+    const expiry = getWallboardRankHighlightExpiry();
+    if (!expiry) return;
+
+    const delay = Math.max(0, expiry - Date.now());
+    highlightExpiryTimer = window.setTimeout(() => {
+      highlightExpiryTimer = null;
+      syncWallboardRankHighlightDom(container);
+    }, delay);
+  };
 
   const render = (snapshot: LiveSessionSnapshot | null, inactive = false): void => {
     clearElement(root);
@@ -69,6 +88,10 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
     container.append(renderWallboardHeader(snapshot.organizerName, snapshot.updatedAt));
 
     const body = el('div', { className: 'live-wallboard__body' });
+
+    const sponsors = renderWallboardSponsors(sponsorConfig);
+    if (sponsors) body.append(sponsors);
+
     body.append(renderWallboardActiveMatches(snapshot.activeMatches, players));
 
     body.append(
@@ -85,26 +108,10 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
       )
     );
 
-    const sponsors = renderWallboardSponsors(sponsorConfig);
-    if (sponsors) body.append(sponsors);
-
     container.append(body);
     root.append(container);
     mountWallboardTimers(container);
-  };
-
-  const scheduleAlertRefresh = (): void => {
-    if (alertRefreshTimer) return;
-    alertRefreshTimer = window.setInterval(() => {
-      if (!lastSnapshot || !hasActiveWallboardRankAlerts()) {
-        if (alertRefreshTimer) {
-          window.clearInterval(alertRefreshTimer);
-          alertRefreshTimer = null;
-        }
-        return;
-      }
-      render(lastSnapshot);
-    }, 1000);
+    scheduleHighlightExpiry(container);
   };
 
   const sponsorUnsub = sponsorConfigService.subscribe((config) => {
@@ -127,9 +134,6 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
       }
       lastSnapshot = snap.data() as LiveSessionSnapshot;
       render(lastSnapshot);
-      if (hasActiveWallboardRankAlerts()) {
-        scheduleAlertRefresh();
-      }
     },
     () => {
       root.replaceChildren(
@@ -142,6 +146,6 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
     unsub();
     sponsorUnsub();
     presenceHandle?.stop();
-    if (alertRefreshTimer) window.clearInterval(alertRefreshTimer);
+    if (highlightExpiryTimer) window.clearTimeout(highlightExpiryTimer);
   });
 }
