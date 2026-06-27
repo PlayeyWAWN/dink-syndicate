@@ -47,7 +47,8 @@ function toPublicMatch(match: Match, courts: Court[], status: 'active' | 'comple
 }
 
 function buildRankings(players: Player[]): PublicRankingRow[] {
-  const sorted = [...players].sort((a, b) => comparePlayersForRanking(a, b, 'session'));
+  const withGames = players.filter((player) => player.gamesPlayed > 0);
+  const sorted = [...withGames].sort((a, b) => comparePlayersForRanking(a, b, 'session'));
   return sorted.slice(0, 10).map((player, index) => ({
     rank: index + 1,
     playerId: player.id,

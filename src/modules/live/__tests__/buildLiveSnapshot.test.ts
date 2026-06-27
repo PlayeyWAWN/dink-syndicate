@@ -133,6 +133,27 @@ describe('buildLiveSnapshot', () => {
     expect(snapshot.viewerStats.totalUnique).toBe(2);
   });
 
+  it('returns empty rankings until someone has played a game', () => {
+    const noGamesPlayers = players.map((p) => ({ ...p, gamesPlayed: 0, wins: 0, losses: 0 }));
+    const snapshot = buildLiveSnapshot({
+      sessionId: 'sess-1',
+      organizerName: 'Host',
+      publishToken: 'tok',
+      isActive: true,
+      courts,
+      queueState,
+      players: noGamesPlayers,
+      viewerStats: {
+        totalUnique: 0,
+        peakConcurrent: 0,
+        totalViewMinutes: 0,
+        publishStartedAt: Date.now(),
+      },
+    });
+
+    expect(snapshot.rankings).toHaveLength(0);
+  });
+
   it('computes ranking deltas against previous snapshot', () => {
     const first = buildLiveSnapshot({
       sessionId: 'sess-1',

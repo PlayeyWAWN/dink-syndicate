@@ -31,12 +31,6 @@ export function renderQueueScreen(container: HTMLElement): void {
     void livePublishService.syncSnapshot();
   }
 
-  container.append(
-    renderLivePublishPanel({
-      onChange: () => appRouter.navigate('queue'),
-    })
-  );
-
   const {
     queueState,
     getAvailablePlayers,
@@ -247,6 +241,12 @@ export function renderQueueScreen(container: HTMLElement): void {
         usePlayerStore.getState().setExcluded(playerId, false);
         appRouter.navigate('queue');
       },
+    })
+  );
+
+  container.append(
+    renderLivePublishPanel({
+      onChange: () => appRouter.navigate('queue'),
     })
   );
 

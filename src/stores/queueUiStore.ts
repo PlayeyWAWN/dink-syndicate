@@ -19,6 +19,7 @@ interface QueueUiState {
   excludedSearchQuery: string;
   availableSectionOpen: boolean;
   excludedSectionOpen: boolean;
+  liveWallboardSectionOpen: boolean;
   ladderStartNotices: LadderStartNotice[];
   ladderSelectedPoolPlayerId: string | null;
   stackSelectedPlayerIds: string[];
@@ -30,6 +31,7 @@ interface QueueUiState {
   setExcludedSearchQuery: (query: string) => void;
   setAvailableSectionOpen: (open: boolean) => void;
   setExcludedSectionOpen: (open: boolean) => void;
+  setLiveWallboardSectionOpen: (open: boolean) => void;
   pushLadderStartNotices: (
     notices: Array<Pick<LadderStartNotice, 'courtLabel' | 'playerNames'>>
   ) => void;
@@ -53,6 +55,7 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   excludedSearchQuery: '',
   availableSectionOpen: true,
   excludedSectionOpen: false,
+  liveWallboardSectionOpen: false,
   ladderStartNotices: [],
   ladderSelectedPoolPlayerId: null,
   stackSelectedPlayerIds: [],
@@ -77,6 +80,7 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   setExcludedSearchQuery: (excludedSearchQuery) => set({ excludedSearchQuery }),
   setAvailableSectionOpen: (availableSectionOpen) => set({ availableSectionOpen }),
   setExcludedSectionOpen: (excludedSectionOpen) => set({ excludedSectionOpen }),
+  setLiveWallboardSectionOpen: (liveWallboardSectionOpen) => set({ liveWallboardSectionOpen }),
   pushLadderStartNotices: (notices) => {
     if (notices.length === 0) return;
     const now = Date.now();

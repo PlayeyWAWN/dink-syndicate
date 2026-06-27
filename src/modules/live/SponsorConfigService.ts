@@ -1,4 +1,5 @@
 import { doc, getDoc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
+import { stripUndefinedDeep } from '@/lib/firestore-sanitize';
 import { getFirebaseFirestore } from '@/config/firebase-app';
 import { isFirebaseEnabled } from '@/config/firebase';
 import { FIRESTORE_PATHS } from '@/modules/live/firestore-paths';
@@ -58,10 +59,25 @@ export const sponsorConfigService = {
     const db = getFirebaseFirestore();
     if (!db) throw new Error('Firestore unavailable');
 
-    await setDoc(doc(db, FIRESTORE_PATHS.appConfigGlobal), {
-      ...config,
-      updatedAt: Date.now(),
+    const sponsors = sponsorConfigService.normalizeSponsors(config.sponsors).map((sponsor) => {
+      const entry: Record<string, unknown> = {
+        id: sponsor.id,
+        name: sponsor.name,
+        logoUrl: sponsor.logoUrl,
+        sortOrder: sponsor.sortOrder,
+      };
+      if (sponsor.linkUrl) entry.linkUrl = sponsor.linkUrl;
+      return entry;
     });
+
+    await setDoc(
+      doc(db, FIRESTORE_PATHS.appConfigGlobal),
+      stripUndefinedDeep({
+        sponsorsEnabled: config.sponsorsEnabled,
+        sponsors,
+        updatedAt: Date.now(),
+      })
+    );
   },
 
   normalizeSponsors(sponsors: SponsorEntry[]): SponsorEntry[] {
