@@ -9,12 +9,10 @@ import { LiveSessionSnapshot, SponsorConfig } from '@/types/live';
 import { hasActiveWallboardRankAlerts } from '@/ui/components/wallboard/wallboard-rank-alerts';
 import {
   mountWallboardTimers,
-  processRankingsForWallboard,
   renderWallboardActiveMatches,
   renderWallboardHeader,
   renderWallboardMatchHistory,
   renderWallboardQueue,
-  renderWallboardRankAlertOverlay,
   renderWallboardRankings,
   renderWallboardSponsors,
   resolveWallboardPlayers,
@@ -67,11 +65,7 @@ export async function bootstrapLiveWallboard(root: HTMLElement, token: string): 
       snapshot.rankings
     );
 
-    const rankAlerts = processRankingsForWallboard(snapshot.rankings);
-    const rankOverlay = renderWallboardRankAlertOverlay(rankAlerts);
-
     const container = el('div', { className: 'live-wallboard' });
-    if (rankOverlay) container.append(rankOverlay);
     container.append(renderWallboardHeader(snapshot.organizerName, snapshot.updatedAt));
 
     const body = el('div', { className: 'live-wallboard__body' });

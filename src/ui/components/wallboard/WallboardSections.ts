@@ -10,7 +10,6 @@ import {
 } from '@/ui/components/wallboard/wallboard-player-chip';
 import {
   processWallboardRankAlerts,
-  WallboardRankAlert,
 } from '@/ui/components/wallboard/wallboard-rank-alerts';
 
 function playerName(id: string, players: PublicPlayer[]): string {
@@ -76,13 +75,27 @@ function buildPlayerLookup(
 }
 
 export function renderWallboardHeader(organizerName: string, updatedAt: number): HTMLElement {
+  const now = new Date();
   const header = el('header', { className: 'live-wallboard__header' });
+  const brand = el('div', { className: 'live-wallboard__brand' });
+  brand.append(
+    el('img', {
+      className: 'live-wallboard__logo',
+      src: '/images/logo.webp',
+      alt: 'Dink Syndicate',
+    }),
+    el('p', { className: 'live-wallboard__brand-name' }, ['Dink Syndicate'])
+  );
+
   header.append(
-    el('img', { className: 'live-wallboard__logo', src: '/images/logo.webp', alt: 'Dink Syndicate' }),
+    brand,
     el('div', { className: 'live-wallboard__header-text' }, [
-      el('h1', { className: 'live-wallboard__organizer' }, [organizerName]),
+      el('p', { className: 'live-wallboard__organizer' }, [organizerName]),
+      el('p', { className: 'live-wallboard__date', id: 'wallboard-date' }, [
+        formatWallboardDate(now),
+      ]),
       el('p', { className: 'live-wallboard__clock', id: 'wallboard-clock' }, [
-        new Date().toLocaleTimeString(),
+        now.toLocaleTimeString(),
       ]),
       el('p', {
         className: 'live-wallboard__updated',
@@ -92,6 +105,15 @@ export function renderWallboardHeader(organizerName: string, updatedAt: number):
     ])
   );
   return header;
+}
+
+function formatWallboardDate(date: Date): string {
+  return date.toLocaleDateString(undefined, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 }
 
 function formatMatchFormatLabel(format: string): string {
@@ -277,21 +299,6 @@ function buildTopTenEnterAlerts(rankings: PublicRankingRow[]): string[] {
   return processWallboardRankAlerts(rankings).map((alert) => alert.message);
 }
 
-export function renderWallboardRankAlertOverlay(alerts: WallboardRankAlert[]): HTMLElement | null {
-  if (alerts.length === 0) return null;
-
-  const overlay = el('div', { className: 'live-wallboard__rank-overlay' });
-  for (const alert of alerts) {
-    overlay.append(
-      el('div', { className: 'live-wallboard__rank-overlay-card' }, [
-        el('span', { className: 'live-wallboard__rank-overlay-icon' }, ['🏆']),
-        el('p', { className: 'live-wallboard__rank-overlay-message' }, [alert.message]),
-      ])
-    );
-  }
-  return overlay;
-}
-
 function rankBadgeClass(rank: number): string {
   if (rank === 1) return 'live-wallboard__rank-badge--gold';
   if (rank === 2) return 'live-wallboard__rank-badge--silver';
@@ -359,7 +366,9 @@ export function renderWallboardRankings(rankings: PublicRankingRow[]): HTMLEleme
     tbody.append(tr);
   }
   table.append(tbody);
-  section.append(table);
+  const tableWrap = el('div', { className: 'live-wallboard__rankings-wrap' });
+  tableWrap.append(table);
+  section.append(tableWrap);
   section.append(
     el('p', { className: 'live-wallboard__rankings-footer' }, [
       'Keep playing and climb the Top 10!',
@@ -468,8 +477,11 @@ export function resolveWallboardPlayers(
 export function mountWallboardTimers(root: HTMLElement): void {
   mountLiveTimers(root);
   const tickClock = (): void => {
+    const now = new Date();
+    const date = root.querySelector('#wallboard-date');
+    if (date) date.textContent = formatWallboardDate(now);
     const clock = root.querySelector('#wallboard-clock');
-    if (clock) clock.textContent = new Date().toLocaleTimeString();
+    if (clock) clock.textContent = now.toLocaleTimeString();
     const updated = root.querySelector('#wallboard-updated');
     const ts = updated?.getAttribute('data-updated-at');
     if (updated && ts) {
@@ -478,8 +490,4 @@ export function mountWallboardTimers(root: HTMLElement): void {
   };
   tickClock();
   window.setInterval(tickClock, 1000);
-}
-
-export function processRankingsForWallboard(rankings: PublicRankingRow[]): WallboardRankAlert[] {
-  return processWallboardRankAlerts(rankings);
 }

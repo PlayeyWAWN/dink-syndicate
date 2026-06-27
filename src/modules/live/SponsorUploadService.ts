@@ -1,4 +1,9 @@
-import { getDownloadURL, ref, uploadBytes, deleteObject } from 'firebase/storage';
+import {
+  deleteObject,
+  getDownloadURL,
+  ref,
+  uploadBytes,
+} from 'firebase/storage';
 import { getFirebaseStorage } from '@/config/firebase-app';
 import { resolveSponsorSlug, sponsorStoragePath } from '@/modules/live/sponsor-slug';
 
@@ -46,18 +51,54 @@ export async function uploadSponsorLogo(
   return getDownloadURL(storageRef);
 }
 
-export async function deleteSponsorLogoByUrl(logoUrl: string): Promise<void> {
+/** Parse Firebase Storage path for sponsor logos uploaded by this app. */
+export function parseSponsorLogoStoragePath(logoUrl: string): string | null {
+  const trimmed = logoUrl.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.includes('/o/')) {
+    const encoded = trimmed.split('/o/')[1]?.split('?')[0];
+    if (!encoded) return null;
+    try {
+      const path = decodeURIComponent(encoded);
+      return path.startsWith('sponsors/') ? path : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+export function isManagedSponsorLogoUrl(logoUrl: string): boolean {
+  return parseSponsorLogoStoragePath(logoUrl) != null;
+}
+
+function isObjectNotFound(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error != null &&
+    'code' in error &&
+    (error as { code: string }).code === 'storage/object-not-found'
+  );
+}
+
+/**
+ * Delete a sponsor logo file from Firebase Storage when it lives under sponsors/.
+ * External/pasted URLs are skipped. Returns true when the file is gone or was never stored.
+ */
+export async function deleteSponsorLogoByUrl(logoUrl: string): Promise<boolean> {
   const storage = getFirebaseStorage();
-  if (!storage || !logoUrl.includes('/o/')) return;
+  if (!storage || !logoUrl.trim()) return false;
+
+  const path = parseSponsorLogoStoragePath(logoUrl);
+  if (!path) return false;
 
   try {
-    const encoded = logoUrl.split('/o/')[1]?.split('?')[0];
-    if (!encoded) return;
-    const path = decodeURIComponent(encoded);
-    if (path.startsWith('sponsors/')) {
-      await deleteObject(ref(storage, path));
-    }
-  } catch {
-    // ignore missing objects
+    await deleteObject(ref(storage, path));
+    return true;
+  } catch (error) {
+    if (isObjectNotFound(error)) return true;
+    throw error;
   }
 }
