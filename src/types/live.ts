@@ -112,3 +112,7 @@ export const WALLBOARD_MATCH_HISTORY_PAGE_SIZE = 5;
 export const ONLINE_USER_THRESHOLD_MS = 2 * 60 * 1000;
 export const VIEWER_ACTIVE_THRESHOLD_MS = 60 * 1000;
 export const PRESENCE_HEARTBEAT_MS = 30 * 1000;
+/** Wallboard is considered abandoned when no snapshot sync for this long. */
+export const LIVE_SESSION_STALE_THRESHOLD_MS = 30 * 60 * 1000;
+/** While publishing, sync to Firestore on this interval even when the queue is idle. */
+export const LIVE_PUBLISH_HEARTBEAT_MS = 2 * 60 * 1000;

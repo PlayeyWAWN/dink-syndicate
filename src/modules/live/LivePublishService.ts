@@ -25,7 +25,12 @@ import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useQueueStore } from '@/stores/queueStore';
 import { useSessionStore } from '@/stores/sessionStore';
-import { LiveSessionSnapshot, PublicRankingRow, VIEWER_ACTIVE_THRESHOLD_MS } from '@/types/live';
+import {
+  LiveSessionSnapshot,
+  LIVE_PUBLISH_HEARTBEAT_MS,
+  PublicRankingRow,
+  VIEWER_ACTIVE_THRESHOLD_MS,
+} from '@/types/live';
 import { WallboardDailyRollup } from '@/types/analytics';
 import {
   mergeWallboardDailyRollup as mergeWallboardRollupStats,
@@ -36,6 +41,7 @@ import { appAnalyticsService } from '@/modules/analytics/AppAnalyticsService';
 const SYNC_DEBOUNCE_MS = 500;
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let publishHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let previousRankings: PublicRankingRow[] | null = null;
 let lastSyncedAt: number | null = null;
 let viewerUnsubscribe: Unsubscribe | null = null;
@@ -97,6 +103,35 @@ async function cleanupViewerDocs(token: string): Promise<void> {
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
+async function deactivateLiveSession(token: string): Promise<void> {
+  const db = getDb();
+  if (!db) return;
+
+  const ref = doc(db, FIRESTORE_PATHS.liveSession(token));
+  const existing = await getDoc(ref);
+  if (!existing.exists()) return;
+
+  const data = existing.data() as LiveSessionSnapshot;
+  if (!data.isActive) return;
+
+  await persistWallboardDailyRollup(data.viewerStats);
+  await updateDoc(ref, { isActive: false, updatedAt: Date.now() });
+  await cleanupViewerDocs(token);
+}
+
+function startPublishHeartbeat(): void {
+  if (publishHeartbeatTimer) return;
+  publishHeartbeatTimer = setInterval(() => {
+    void livePublishService.syncSnapshot();
+  }, LIVE_PUBLISH_HEARTBEAT_MS);
+}
+
+function stopPublishHeartbeat(): void {
+  if (!publishHeartbeatTimer) return;
+  clearInterval(publishHeartbeatTimer);
+  publishHeartbeatTimer = null;
+}
+
 export const livePublishService = {
   getLastSyncedAt(): number | null {
     return lastSyncedAt;
@@ -154,25 +189,20 @@ export const livePublishService = {
 
     await appAnalyticsService.setPublishEnabled(true);
     await appAnalyticsService.incrementPublishSessionsStarted();
+    startPublishHeartbeat();
 
     return { ok: true, token, url: buildLiveWallboardUrl(token) };
   },
 
   async disablePublish(): Promise<void> {
-    const db = getDb();
     const session = useSessionStore.getState().session;
     const token = session?.publishToken;
     if (!session) return;
 
-    if (db && token) {
-      const ref = doc(db, FIRESTORE_PATHS.liveSession(token));
-      const existing = await getDoc(ref);
-      if (existing.exists()) {
-        const data = existing.data() as LiveSessionSnapshot;
-        await persistWallboardDailyRollup(data.viewerStats);
-        await updateDoc(ref, { isActive: false, updatedAt: Date.now() });
-        await cleanupViewerDocs(token);
-      }
+    stopPublishHeartbeat();
+
+    if (token) {
+      await deactivateLiveSession(token);
     }
 
     useSessionStore.getState().persistSnapshot({
@@ -186,6 +216,17 @@ export const livePublishService = {
     previousRankings = null;
     this.stopViewerListener();
     await appAnalyticsService.setPublishEnabled(false);
+  },
+
+  /** Resume heartbeat + sync when publish was left enabled (e.g. after reload). */
+  ensurePublishing(): void {
+    if (!this.isPublishEnabled()) return;
+    startPublishHeartbeat();
+    void this.syncSnapshot();
+  },
+
+  async expireStaleSession(token: string): Promise<void> {
+    await deactivateLiveSession(token);
   },
 
   async regenerateToken(): Promise<{ ok: true; token: string; url: string } | { ok: false; message: string }> {
