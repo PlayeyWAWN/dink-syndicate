@@ -128,6 +128,16 @@ export function resolveStackStartPlayerIds(
   return getDefaultStackSelection(stack);
 }
 
+/** Next due doubles lineup as [teamA1, teamA2, teamB1, teamB2] for display/sync. */
+export function buildNextStackLineupPlayerIds(
+  stack: WinLoseStackState,
+  selectedIds: string[] = []
+): string[] | null {
+  const lineupIds = resolveStackStartPlayerIds(stack, selectedIds);
+  if (!lineupIds) return null;
+  return partnerSplitPairing(lineupIds, stack.lastPartnerByPlayer).playerIds;
+}
+
 /** Swap a player up or down within the Next-Up stack only. */
 export function reorderPlayerInDueStack(
   state: QueueState,

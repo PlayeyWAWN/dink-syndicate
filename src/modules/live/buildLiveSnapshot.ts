@@ -1,6 +1,6 @@
-import { queueEntryLabel } from '@/lib/format-utils';
+import { queueEntryLabel, splitTeams } from '@/lib/format-utils';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
-import { getNextUpStackIds } from '@/modules/game-mode/winLoseStackMode';
+import { buildNextStackLineupPlayerIds } from '@/modules/game-mode/winLoseStackMode';
 import { computeRankingDeltas } from '@/modules/live/ranking-deltas';
 import { computeRankingPoints, comparePlayersForRanking } from '@/modules/stats/ranking-utils';
 import { Court } from '@/types/court';
@@ -69,20 +69,28 @@ function buildRankings(players: Player[]): PublicRankingRow[] {
 function buildQueueNext(
   queueState: QueueState,
   players: Player[],
-  gameMode: GameMode
+  gameMode: GameMode,
+  stackSelectedPlayerIds: string[] = []
 ): PublicQueueEntry[] {
   if (gameMode === 'win_lose_stack' && queueState.winLoseStack) {
-    const stackIds = getNextUpStackIds(queueState.winLoseStack);
-    if (stackIds.length === 0) return [];
-    const label = queueState.winLoseStack.nextUp === 'winners' ? 'Winners stack' : 'Losers stack';
-    const names = stackIds
+    const stack = queueState.winLoseStack;
+    const playerIds = buildNextStackLineupPlayerIds(stack, stackSelectedPlayerIds);
+    if (!playerIds) return [];
+
+    const stackLabel = stack.nextUp === 'winners' ? 'Winners stack' : 'Losers stack';
+    const { teamA, teamB } = splitTeams(playerIds);
+    const namesA = teamA
       .map((id) => players.find((p) => p.id === id)?.name ?? '?')
-      .join(', ');
+      .join(' & ');
+    const namesB = teamB
+      .map((id) => players.find((p) => p.id === id)?.name ?? '?')
+      .join(' & ');
+
     return [
       {
         position: 1,
-        playerIds: stackIds,
-        label: `${label}: ${names}`,
+        playerIds,
+        label: `${stackLabel}: ${namesA} vs ${namesB}`,
       },
     ];
   }
@@ -116,6 +124,8 @@ export interface BuildLiveSnapshotInput {
   players: Player[];
   previousRankings?: PublicRankingRow[];
   viewerStats: LiveSessionSnapshot['viewerStats'];
+  /** Manual win/lose stack selection when auto-rotation is paused. */
+  stackSelectedPlayerIds?: string[];
 }
 
 /** Build public Firestore payload from local store state. */
@@ -140,7 +150,12 @@ export function buildLiveSnapshot(input: BuildLiveSnapshotInput): LiveSessionSna
     activeMatches: input.queueState.activeMatches.map((m) =>
       toPublicMatch(m, input.courts, 'active')
     ),
-    queueNext: buildQueueNext(input.queueState, input.players, gameMode),
+    queueNext: buildQueueNext(
+      input.queueState,
+      input.players,
+      gameMode,
+      input.stackSelectedPlayerIds ?? []
+    ),
     completedMatches: input.queueState.completedMatches.map((m) =>
       toPublicMatch(m, input.courts, 'completed')
     ),

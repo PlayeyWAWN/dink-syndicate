@@ -24,7 +24,9 @@ import {
 import { useCourtStore } from '@/stores/courtStore';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useQueueStore } from '@/stores/queueStore';
+import { useQueueUiStore } from '@/stores/queueUiStore';
 import { useSessionStore } from '@/stores/sessionStore';
+import { isRotationPaused } from '@/types/queue';
 import {
   LiveSessionSnapshot,
   LIVE_PUBLISH_HEARTBEAT_MS,
@@ -253,6 +255,11 @@ export const livePublishService = {
     const existingData = existing.exists() ? (existing.data() as LiveSessionSnapshot) : null;
     const viewerStats = existingData?.viewerStats ?? defaultViewerStats();
 
+    const queueState = useQueueStore.getState().queueState;
+    const stackSelectedPlayerIds = isRotationPaused(queueState)
+      ? useQueueUiStore.getState().stackSelectedPlayerIds
+      : undefined;
+
     const snapshot = buildLiveSnapshot({
       sessionId: session.id,
       organizerName: getOrganizerName(),
@@ -260,10 +267,11 @@ export const livePublishService = {
       isActive: true,
       settings: useSessionStore.getState().loadSnapshot()?.settings,
       courts: useCourtStore.getState().courts,
-      queueState: useQueueStore.getState().queueState,
+      queueState,
       players: usePlayerStore.getState().players,
       previousRankings: previousRankings ?? existingData?.rankings,
       viewerStats,
+      stackSelectedPlayerIds,
     });
 
     previousRankings = snapshot.rankings;

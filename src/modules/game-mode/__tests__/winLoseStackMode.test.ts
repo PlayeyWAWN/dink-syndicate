@@ -1,5 +1,6 @@
 import {
   buildInitialStackDistribution,
+  buildNextStackLineupPlayerIds,
   getDefaultStackSelection,
   rebalanceStackQueuesIfNeeded,
   reorderPlayerInDueStack,
@@ -216,5 +217,21 @@ describe('winLoseStackMode', () => {
       'p5',
     ]);
     expect(resolveStackStartPlayerIds(stack, ['p1', 'p2'])).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+
+  it('builds a four-player lineup from the front of the due stack only', () => {
+    const stack = {
+      winnerStack: [],
+      loserStack: ['jason', 'hannah', 'eric', 'olivia', 'james', 'emily', 'andrew', 'rachel'],
+      nextUp: 'losers' as const,
+      lastPartnerByPlayer: {},
+    };
+
+    expect(buildNextStackLineupPlayerIds(stack)).toEqual([
+      'jason',
+      'hannah',
+      'eric',
+      'olivia',
+    ]);
   });
 });
