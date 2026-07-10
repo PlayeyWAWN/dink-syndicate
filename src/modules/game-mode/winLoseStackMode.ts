@@ -96,7 +96,7 @@ function removeFrontPlayers(
 
 /**
  * Remove four selected players from either waiting pile.
- * Pulled order preserves Winners-then-Losers relative order among the selection.
+ * Pulled order matches the caller's selection order (manual tap / team slots).
  */
 function removeSpecificPlayersFromStacks(
   stack: WinLoseStackState,
@@ -121,18 +121,13 @@ function removeSpecificPlayersFromStacks(
     if (selectedSet.has(id)) originStackByPlayer[id] = 'losers';
   }
 
-  const pulled = [
-    ...stack.winnerStack.filter((id) => selectedSet.has(id)),
-    ...stack.loserStack.filter((id) => selectedSet.has(id)),
-  ];
-
   return {
     stack: {
       ...stack,
       winnerStack: stack.winnerStack.filter((id) => !selectedSet.has(id)),
       loserStack: stack.loserStack.filter((id) => !selectedSet.has(id)),
     },
-    pulled,
+    pulled: [...playerIds],
     originStackByPlayer,
   };
 }
@@ -156,7 +151,7 @@ export function getDefaultStackSelection(
   return getNextUpStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS);
 }
 
-/** Resolve manual start lineup: exact valid selection, else default for the mode. */
+/** Resolve manual start lineup: exact valid selection, else default for auto mode. */
 export function resolveStackStartPlayerIds(
   stack: WinLoseStackState,
   selectedIds: string[],
@@ -166,19 +161,16 @@ export function resolveStackStartPlayerIds(
     const waiting = getAllWaitingStackIds(stack);
     if (waiting.length < WIN_LOSE_STACK_PLAYERS) return null;
 
+    // Manual mode: only an exact 4-player tap order counts — never auto-fill.
     if (
       selectedIds.length === WIN_LOSE_STACK_PLAYERS &&
       new Set(selectedIds).size === WIN_LOSE_STACK_PLAYERS &&
       selectedIds.every((id) => waiting.includes(id))
     ) {
-      const selectedSet = new Set(selectedIds);
-      return [
-        ...stack.winnerStack.filter((id) => selectedSet.has(id)),
-        ...stack.loserStack.filter((id) => selectedSet.has(id)),
-      ];
+      return [...selectedIds];
     }
 
-    return getDefaultStackSelection(stack, { crossStack: true });
+    return null;
   }
 
   const dueIds = getNextUpStackIds(stack);
@@ -202,10 +194,15 @@ export function buildNextStackLineupPlayerIds(
   selectedIds: string[] = [],
   options?: StackSelectionOptions
 ): string[] | null {
-  // Always resolve from at most four selected ids so live/UI never get a full-stack dump.
   const cappedSelection = selectedIds.slice(0, WIN_LOSE_STACK_PLAYERS);
   const lineupIds = resolveStackStartPlayerIds(stack, cappedSelection, options);
   if (!lineupIds || lineupIds.length !== WIN_LOSE_STACK_PLAYERS) return null;
+
+  // Manual tap order is the pairing; auto mode still shuffles prior partners apart.
+  if (options?.crossStack) {
+    return lineupIds;
+  }
+
   const paired = partnerSplitPairing(lineupIds, stack.lastPartnerByPlayer).playerIds;
   if (paired.length !== WIN_LOSE_STACK_PLAYERS) return null;
   return paired;
@@ -341,6 +338,8 @@ export function startNextStackMatch(
 
   let pulled: string[];
   let originStackByPlayer: Record<string, 'winners' | 'losers'> | undefined;
+  let playerIds: string[];
+  let hadPartnerConflict = false;
 
   if (options?.playerIds) {
     const removed = removeSpecificPlayersFromStacks(stack, options.playerIds);
@@ -350,16 +349,17 @@ export function startNextStackMatch(
     stack = removed.stack;
     pulled = removed.pulled;
     originStackByPlayer = removed.originStackByPlayer;
+    // Manual lineup order is [teamA1, teamA2, teamB1, teamB2] — keep as tapped.
+    playerIds = [...pulled];
   } else {
     const result = removeFrontPlayers(stack, sourceStack, WIN_LOSE_STACK_PLAYERS);
     stack = result.stack;
     pulled = result.pulled;
+    const paired = partnerSplitPairing(pulled, stack.lastPartnerByPlayer);
+    playerIds = paired.playerIds;
+    hadPartnerConflict = paired.hadPartnerConflict;
   }
 
-  const { playerIds, hadPartnerConflict } = partnerSplitPairing(
-    pulled,
-    stack.lastPartnerByPlayer
-  );
   stack = {
     ...stack,
     lastPartnerByPlayer: updateLastPartners(playerIds, stack.lastPartnerByPlayer),

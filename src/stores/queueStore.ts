@@ -56,7 +56,6 @@ import {
 import {
   reconcileStackWithCheckedInPlayers,
   getAllWaitingStackIds,
-  getDefaultStackSelection,
   resolveStackStartPlayerIds,
   reorderPlayerInDueStack,
   removePlayerFromWinLoseStacks,
@@ -154,9 +153,8 @@ function reconcileAvailableSince(state: QueueState): void {
 
 function refreshStackSelectionIfManual(state: QueueState): void {
   if (!isStackModeActive() || !isRotationPaused(state)) return;
-  const stack = ensureWinLoseStackState(state.winLoseStack);
-  const defaults = getDefaultStackSelection(stack, { crossStack: true });
-  useQueueUiStore.getState().syncStackDefaultSelection(defaults);
+  // Manual mode starts empty — do not auto-fill the next lineup.
+  useQueueUiStore.getState().clearStackSelection();
 }
 
 export const useQueueStore = create<QueueStoreState>((set, get) => {
@@ -738,13 +736,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
         const eligibleIds = getAllWaitingStackIds(stack);
         const pruned = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
         if (pruned.length !== ui.stackSelectedPlayerIds.length) {
-          if (pruned.length === 0 && eligibleIds.length >= 4) {
-            ui.syncStackDefaultSelection(
-              getDefaultStackSelection(stack, { crossStack: true })
-            );
-          } else {
-            ui.setStackSelectedPlayerIds(pruned);
-          }
+          ui.setStackSelectedPlayerIds(pruned);
         }
       }
     },

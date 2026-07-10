@@ -43,7 +43,7 @@ interface QueueUiState {
   toggleStackSelectedPlayer: (playerId: string, eligibleIds: string[]) => void;
   setStackSelectedPlayerIds: (ids: string[]) => void;
   clearStackSelection: () => void;
-  syncStackDefaultSelection: (eligibleIds: string[]) => void;
+  syncStackDefaultSelection: (eligibleIds?: string[]) => void;
   hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
@@ -106,13 +106,17 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
       set({ stackSelectedPlayerIds: current.filter((id) => id !== playerId) });
       return;
     }
-    if (current.length >= 4) return;
+    // Full lineup: replace the last slot so tapping a new name swaps them in.
+    if (current.length >= 4) {
+      set({ stackSelectedPlayerIds: [...current.slice(0, 3), playerId] });
+      return;
+    }
     set({ stackSelectedPlayerIds: [...current, playerId] });
   },
   setStackSelectedPlayerIds: (stackSelectedPlayerIds) => set({ stackSelectedPlayerIds }),
   clearStackSelection: () => set({ stackSelectedPlayerIds: [] }),
-  syncStackDefaultSelection: (eligibleIds) =>
-    set({ stackSelectedPlayerIds: eligibleIds.slice(0, 4) }),
+  /** Kept for callers that still sync; manual mode no longer auto-fills. */
+  syncStackDefaultSelection: (_eligibleIds?: string[]) => set({ stackSelectedPlayerIds: [] }),
   hydrateFromSettings: (settings) => {
     const courtFormat: CourtFormat =
       settings?.courtFormat === 'singles' ? 'singles' : 'doubles';

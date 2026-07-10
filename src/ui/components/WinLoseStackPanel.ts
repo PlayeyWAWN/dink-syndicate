@@ -1,7 +1,5 @@
 import { el } from '@/lib/dom-utils';
-import { splitTeams } from '@/lib/format-utils';
 import { pickleballIconHtml } from '@/ui/icons/pickleball-icon';
-import { partnerSplitPairing } from '@/modules/game-mode/partnerSplit';
 import { useQueueStore } from '@/stores/queueStore';
 import { useCourtStore } from '@/stores/courtStore';
 import { useQueueUiStore } from '@/stores/queueUiStore';
@@ -13,7 +11,7 @@ import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
 import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 import {
   getAllWaitingStackIds,
-  getDefaultStackSelection,
+  getNextUpStackIds,
   getStackStartBlockReason,
   WIN_LOSE_STACK_PLAYERS,
 } from '@/modules/game-mode/winLoseStackMode';
@@ -27,80 +25,175 @@ export interface WinLoseStackPanelOptions {
 }
 
 interface StackColumnInteraction {
-  manualMode: boolean;
-  /** When true, this column participates in selection (manual: both stacks). */
   selectable: boolean;
-  /** When true, show reorder arrows (Next-Up column only). */
   allowReorder: boolean;
   selectedPlayerIds: string[];
   onToggleSelect: (playerId: string) => void;
   onReorder: (playerId: string, direction: 'up' | 'down') => void;
 }
 
+const LINEUP_SLOT_LABELS = ['Team 1 · A', 'Team 1 · B', 'Team 2 · A', 'Team 2 · B'] as const;
+
 function playerName(players: Player[], playerId: string): string {
   return players.find((player) => player.id === playerId)?.name ?? 'Unknown';
 }
 
-function getLineupPreviewIds(
-  selectedPlayerIds: string[],
-  manualMode: boolean,
-  eligibleIds: string[]
-): string[] {
-  if (eligibleIds.length < WIN_LOSE_STACK_PLAYERS) {
-    return eligibleIds.slice(0, WIN_LOSE_STACK_PLAYERS);
+function pruneManualSelection(eligibleIds: string[]): string[] {
+  const ui = useQueueUiStore.getState();
+  const valid = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
+  if (valid.length !== ui.stackSelectedPlayerIds.length) {
+    ui.setStackSelectedPlayerIds(valid);
   }
-
-  if (
-    manualMode &&
-    selectedPlayerIds.length === WIN_LOSE_STACK_PLAYERS &&
-    selectedPlayerIds.every((id) => eligibleIds.includes(id))
-  ) {
-    const selectedSet = new Set(selectedPlayerIds);
-    return eligibleIds.filter((id) => selectedSet.has(id));
-  }
-
-  return eligibleIds.slice(0, WIN_LOSE_STACK_PLAYERS);
+  return valid;
 }
 
-function renderNextLineupPreview(
-  duePlayerIds: string[],
+function renderLineupSlot(
+  index: number,
+  playerId: string | undefined,
   players: Player[],
-  lastPartnerByPlayer: Record<string, string>
+  onClear: (playerId: string) => void
 ): HTMLElement {
-  const { playerIds, hadPartnerConflict } = partnerSplitPairing(
-    duePlayerIds,
-    lastPartnerByPlayer
-  );
-  const { teamA, teamB } = splitTeams(playerIds);
+  const isTeam1 = index < 2;
+  const slot = el('button', {
+    type: 'button',
+    className: [
+      'win-lose-stack__lineup-slot',
+      isTeam1 ? 'win-lose-stack__lineup-slot--team1' : 'win-lose-stack__lineup-slot--team2',
+      playerId ? 'win-lose-stack__lineup-slot--filled' : 'win-lose-stack__lineup-slot--empty',
+    ]
+      .filter(Boolean)
+      .join(' '),
+    title: playerId ? `Remove ${playerName(players, playerId)}` : 'Empty slot — tap a waiting player',
+    'aria-label': playerId
+      ? `${LINEUP_SLOT_LABELS[index]}: ${playerName(players, playerId)}. Tap to remove.`
+      : `${LINEUP_SLOT_LABELS[index]}: empty`,
+  });
 
-  const lineup = el('div', { className: 'win-lose-stack__lineup' });
-  lineup.append(el('p', { className: 'win-lose-stack__lineup-title' }, ['Next lineup']));
-
-  lineup.append(
-    el('div', { className: 'win-lose-stack__lineup-team win-lose-stack__lineup-team--a' }, [
-      el('span', { className: 'win-lose-stack__lineup-label' }, ['Team 1']),
-      el('span', { className: 'win-lose-stack__lineup-names' }, [
-        `${playerName(players, teamA[0]!)} & ${playerName(players, teamA[1]!)}`,
-      ]),
-    ]),
-    el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']),
-    el('div', { className: 'win-lose-stack__lineup-team win-lose-stack__lineup-team--b' }, [
-      el('span', { className: 'win-lose-stack__lineup-label' }, ['Team 2']),
-      el('span', { className: 'win-lose-stack__lineup-names' }, [
-        `${playerName(players, teamB[0]!)} & ${playerName(players, teamB[1]!)}`,
-      ]),
-    ])
+  slot.append(
+    el('span', { className: 'win-lose-stack__lineup-slot-label' }, [LINEUP_SLOT_LABELS[index]!])
   );
 
-  if (hadPartnerConflict) {
-    lineup.append(
-      el('p', { className: 'win-lose-stack__lineup-note' }, [
-        'Prior partners could not all be split — lineup may adjust when the game starts.',
+  if (playerId) {
+    slot.append(
+      el('span', { className: 'win-lose-stack__lineup-slot-name' }, [playerName(players, playerId)])
+    );
+    slot.addEventListener('click', () => onClear(playerId));
+  } else {
+    slot.append(el('span', { className: 'win-lose-stack__lineup-slot-name' }, ['Tap a player']));
+  }
+
+  return slot;
+}
+
+/** Standalone Next Lineup section above the Winners/Losers columns. */
+function renderNextLineupSection(
+  selectedPlayerIds: string[],
+  players: Player[],
+  manualMode: boolean,
+  autoPreviewIds: string[],
+  onClearPlayer: (playerId: string) => void,
+  onClearAll: () => void
+): HTMLElement {
+  const section = el('div', {
+    className: 'win-lose-stack__next-lineup',
+    role: 'region',
+    'aria-label': 'Next lineup',
+  });
+
+  const header = el('div', { className: 'win-lose-stack__next-lineup-header' });
+  header.append(el('h3', { className: 'win-lose-stack__next-lineup-title' }, ['Next lineup']));
+
+  if (manualMode) {
+    header.append(
+      el('span', { className: 'win-lose-stack__next-badge' }, [
+        `${selectedPlayerIds.length}/${WIN_LOSE_STACK_PLAYERS} selected`,
+      ])
+    );
+    if (selectedPlayerIds.length > 0) {
+      const clearBtn = el('button', {
+        type: 'button',
+        className: 'win-lose-stack__lineup-clear',
+      }, ['Clear']) as HTMLButtonElement;
+      clearBtn.addEventListener('click', onClearAll);
+      header.append(clearBtn);
+    }
+  } else {
+    header.append(
+      el('span', { className: 'win-lose-stack__next-badge' }, [
+        autoPreviewIds.length >= WIN_LOSE_STACK_PLAYERS
+          ? `Top ${WIN_LOSE_STACK_PLAYERS}`
+          : `${autoPreviewIds.length}/${WIN_LOSE_STACK_PLAYERS}`,
+      ])
+    );
+  }
+  section.append(header);
+
+  if (manualMode) {
+    section.append(
+      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+        'Tap waiting players below to fill slots in order (Team 1, then Team 2). Tap a filled slot or name again to remove. With 4 selected, tapping another player replaces the last slot.',
+      ])
+    );
+
+    const slots = el('div', { className: 'win-lose-stack__lineup-slots' });
+    const team1 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+    team1.append(
+      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--a' }, [
+        'Team 1',
+      ]),
+      renderLineupSlot(0, selectedPlayerIds[0], players, onClearPlayer),
+      renderLineupSlot(1, selectedPlayerIds[1], players, onClearPlayer)
+    );
+    const team2 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+    team2.append(
+      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--b' }, [
+        'Team 2',
+      ]),
+      renderLineupSlot(2, selectedPlayerIds[2], players, onClearPlayer),
+      renderLineupSlot(3, selectedPlayerIds[3], players, onClearPlayer)
+    );
+    slots.append(team1, el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']), team2);
+    section.append(slots);
+  } else if (autoPreviewIds.length >= WIN_LOSE_STACK_PLAYERS) {
+    const slots = el('div', { className: 'win-lose-stack__lineup-slots' });
+    const team1 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+    team1.append(
+      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--a' }, [
+        'Team 1',
+      ]),
+      el('div', { className: 'win-lose-stack__lineup-slot win-lose-stack__lineup-slot--team1 win-lose-stack__lineup-slot--filled' }, [
+        el('span', { className: 'win-lose-stack__lineup-slot-name' }, [
+          `${playerName(players, autoPreviewIds[0]!)} & ${playerName(players, autoPreviewIds[1]!)}`,
+        ]),
+      ])
+    );
+    const team2 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+    team2.append(
+      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--b' }, [
+        'Team 2',
+      ]),
+      el('div', { className: 'win-lose-stack__lineup-slot win-lose-stack__lineup-slot--team2 win-lose-stack__lineup-slot--filled' }, [
+        el('span', { className: 'win-lose-stack__lineup-slot-name' }, [
+          `${playerName(players, autoPreviewIds[2]!)} & ${playerName(players, autoPreviewIds[3]!)}`,
+        ]),
+      ])
+    );
+    slots.append(team1, el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']), team2);
+    section.append(slots);
+    section.append(
+      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+        'Auto-rotation will start these four when a court opens (partners may shuffle).',
+      ])
+    );
+  } else {
+    section.append(
+      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+        `Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack before auto-rotation can start.`,
       ])
     );
   }
 
-  return lineup;
+  return section;
 }
 
 function renderReorderButton(
@@ -133,11 +226,7 @@ function renderStackColumn(
   playerIds: string[],
   players: Player[],
   isNextUp: boolean,
-  lastPartnerByPlayer: Record<string, string> = {},
-  interaction?: StackColumnInteraction,
-  lineupEligibleIds: string[] = playerIds,
-  totalSelectedCount = 0,
-  crossStackManual = false
+  interaction?: StackColumnInteraction
 ): HTMLElement {
   const selectable = interaction?.selectable === true;
   const allowReorder = interaction?.allowReorder === true && isNextUp;
@@ -147,88 +236,41 @@ function renderStackColumn(
     className: `win-lose-stack__column${isNextUp ? ' win-lose-stack__column--next-up' : ''}`,
   });
 
-  const dueCount = isNextUp
-    ? Math.min(playerIds.length, WIN_LOSE_STACK_PLAYERS)
-    : 0;
-
   const header = el('div', { className: 'win-lose-stack__column-header' }, [
     el('h3', { className: 'win-lose-stack__column-title' }, [title]),
     isNextUp
-      ? el('span', { className: 'win-lose-stack__next-badge' }, [
-          interaction?.manualMode && lineupEligibleIds.length >= WIN_LOSE_STACK_PLAYERS
-            ? `Next game · ${totalSelectedCount}/${WIN_LOSE_STACK_PLAYERS} selected`
-            : dueCount >= WIN_LOSE_STACK_PLAYERS
-              ? `Next game · top ${WIN_LOSE_STACK_PLAYERS}`
-              : `Next game · ${dueCount}/${WIN_LOSE_STACK_PLAYERS}`,
-        ])
+      ? el('span', { className: 'win-lose-stack__next-badge' }, ['Next-Up'])
       : el('span', { className: 'win-lose-stack__count' }, [String(playerIds.length)]),
   ]);
   column.append(header);
 
-  if (isNextUp && (dueCount > 0 || (crossStackManual && selectable))) {
+  if (selectable) {
     column.append(
       el('p', { className: 'win-lose-stack__due-hint' }, [
-        crossStackManual && selectable
-          ? 'Tap any waiting players across both stacks (up to 4). Use arrows to reorder this stack.'
-          : dueCount >= WIN_LOSE_STACK_PLAYERS
-            ? 'Partners shown below — notify these four when a court opens.'
-            : `Need ${WIN_LOSE_STACK_PLAYERS - dueCount} more in this stack before the next game can start.`,
+        'Tap a name to add or remove them from Next lineup above.',
       ])
     );
-  } else if (!isNextUp && crossStackManual && selectable) {
+  } else if (isNextUp) {
     column.append(
       el('p', { className: 'win-lose-stack__due-hint' }, [
-        'Tap players here too — manual mode can pull from either stack.',
+        playerIds.length >= WIN_LOSE_STACK_PLAYERS
+          ? 'Top four will play next when a court opens.'
+          : `Need ${WIN_LOSE_STACK_PLAYERS - playerIds.length} more in this stack.`,
       ])
     );
-  }
-
-  const previewIds = getLineupPreviewIds(
-    selectedPlayerIds,
-    selectable,
-    lineupEligibleIds
-  );
-  if (
-    isNextUp &&
-    lineupEligibleIds.length >= WIN_LOSE_STACK_PLAYERS &&
-    previewIds.length === WIN_LOSE_STACK_PLAYERS
-  ) {
-    column.append(renderNextLineupPreview(previewIds, players, lastPartnerByPlayer));
   }
 
   const list = el('ol', { className: 'win-lose-stack__list' });
-  const showFullList = selectable;
-  const waitingIds = showFullList
-    ? playerIds
-    : isNextUp && dueCount >= WIN_LOSE_STACK_PLAYERS
-      ? playerIds.slice(WIN_LOSE_STACK_PLAYERS)
-      : playerIds;
-  const waitingOffset = showFullList
-    ? 0
-    : isNextUp && dueCount >= WIN_LOSE_STACK_PLAYERS
-      ? WIN_LOSE_STACK_PLAYERS
-      : 0;
-
-  if (waitingIds.length === 0 && !showFullList && dueCount >= WIN_LOSE_STACK_PLAYERS && isNextUp) {
-    list.append(
-      el('li', { className: 'win-lose-stack__empty' }, ['No one else waiting in this stack'])
-    );
-  } else if (waitingIds.length === 0) {
+  if (playerIds.length === 0) {
     list.append(el('li', { className: 'win-lose-stack__empty' }, ['No players waiting']));
   } else {
-    waitingIds.forEach((playerId, index) => {
+    playerIds.forEach((playerId, index) => {
       const name = playerName(players, playerId);
-      const stackIndex = waitingOffset + index;
       const isSelected = selectable && selectedPlayerIds.includes(playerId);
-      const isDue =
-        isNextUp &&
-        !selectable &&
-        dueCount < WIN_LOSE_STACK_PLAYERS &&
-        stackIndex < dueCount;
+      const selectionIndex = isSelected ? selectedPlayerIds.indexOf(playerId) + 1 : 0;
 
       const itemClasses = [
         'win-lose-stack__item',
-        isDue ? 'win-lose-stack__item--due' : '',
         selectable ? 'win-lose-stack__item--selectable' : '',
         isSelected ? 'win-lose-stack__item--selected' : '',
       ]
@@ -236,24 +278,20 @@ function renderStackColumn(
         .join(' ');
 
       const itemChildren: HTMLElement[] = [
-        el('span', { className: 'win-lose-stack__position' }, [String(stackIndex + 1)]),
+        el('span', { className: 'win-lose-stack__position' }, [
+          isSelected ? String(selectionIndex) : String(index + 1),
+        ]),
         el('span', { className: 'win-lose-stack__name' }, [name]),
       ];
 
       if (allowReorder && interaction) {
         const actions = el('div', { className: 'win-lose-stack__item-actions' }, [
-          renderReorderButton(
-            'Move up',
-            'up',
-            playerId,
-            stackIndex === 0,
-            interaction.onReorder
-          ),
+          renderReorderButton('Move up', 'up', playerId, index === 0, interaction.onReorder),
           renderReorderButton(
             'Move down',
             'down',
             playerId,
-            stackIndex === playerIds.length - 1,
+            index === playerIds.length - 1,
             interaction.onReorder
           ),
         ]);
@@ -265,10 +303,7 @@ function renderStackColumn(
       if (selectable && interaction) {
         item.setAttribute('role', 'button');
         item.setAttribute('tabindex', '0');
-        item.setAttribute(
-          'aria-pressed',
-          isSelected ? 'true' : 'false'
-        );
+        item.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
         item.addEventListener('click', () => {
           interaction.onToggleSelect(playerId);
         });
@@ -284,57 +319,25 @@ function renderStackColumn(
     });
   }
 
-  if (!showFullList && waitingOffset > 0 && waitingIds.length > 0) {
-    column.append(
-      el('p', { className: 'win-lose-stack__waiting-label' }, ['Still waiting in this stack'])
-    );
-  }
-
   column.append(list);
   return column;
 }
 
-function ensureManualStackSelection(eligibleIds: string[], defaults: string[]): void {
-  const ui = useQueueUiStore.getState();
-  const valid = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
-
-  if (valid.length !== ui.stackSelectedPlayerIds.length) {
-    if (valid.length === 0 && defaults.length >= WIN_LOSE_STACK_PLAYERS) {
-      ui.syncStackDefaultSelection(defaults);
-    } else {
-      ui.setStackSelectedPlayerIds(valid);
-    }
-    return;
-  }
-
-  if (ui.stackSelectedPlayerIds.length === 0 && defaults.length >= WIN_LOSE_STACK_PLAYERS) {
-    ui.syncStackDefaultSelection(defaults);
-  }
-}
-
-/** Win/Lose Stack rotation panel — two stacks, Next-Up indicator, and cold-start control. */
+/** Win/Lose Stack rotation panel — next lineup, two stacks, and start control. */
 export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTMLElement {
   const { queueState, players, openCourtCount, activeMatchCount, onNavigate } = options;
   const stack = ensureWinLoseStackState(queueState.winLoseStack);
   const manualMode = isRotationPaused(queueState);
   const autoRotationOn = !manualMode;
   const blockReason = getStackStartBlockReason(queueState, openCourtCount, activeMatchCount);
-  const canStart = blockReason == null;
 
   const eligibleIds = getAllWaitingStackIds(stack);
-  const defaultSelection = getDefaultStackSelection(stack, { crossStack: manualMode });
-
-  if (manualMode) {
-    ensureManualStackSelection(eligibleIds, defaultSelection);
-  }
-
-  const selectedPlayerIds = manualMode
-    ? useQueueUiStore.getState().stackSelectedPlayerIds
-    : [];
-  const totalSelectedCount = selectedPlayerIds.filter((id) => eligibleIds.includes(id)).length;
+  const selectedPlayerIds = manualMode ? pruneManualSelection(eligibleIds) : [];
+  const autoPreviewIds = !manualMode ? getNextUpStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS) : [];
+  const manualReady = selectedPlayerIds.length === WIN_LOSE_STACK_PLAYERS;
+  const canStart = blockReason == null && (!manualMode || manualReady);
 
   const makeInteraction = (allowReorder: boolean): StackColumnInteraction => ({
-    manualMode: true,
     selectable: true,
     allowReorder,
     selectedPlayerIds,
@@ -371,6 +374,23 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
 
   section.append(renderRotationControls({ onNavigate, mode: 'stack' }));
 
+  section.append(
+    renderNextLineupSection(
+      selectedPlayerIds,
+      players,
+      manualMode,
+      autoPreviewIds,
+      (playerId) => {
+        useQueueUiStore.getState().toggleStackSelectedPlayer(playerId, eligibleIds);
+        onNavigate();
+      },
+      () => {
+        useQueueUiStore.getState().clearStackSelection();
+        onNavigate();
+      }
+    )
+  );
+
   const winnersIsNext = stack.nextUp === 'winners';
   const losersIsNext = stack.nextUp === 'losers';
 
@@ -381,22 +401,14 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       stack.winnerStack,
       players,
       winnersIsNext,
-      stack.lastPartnerByPlayer,
-      manualMode ? makeInteraction(winnersIsNext) : undefined,
-      eligibleIds,
-      totalSelectedCount,
-      manualMode
+      manualMode ? makeInteraction(winnersIsNext) : undefined
     ),
     renderStackColumn(
       'Losers',
       stack.loserStack,
       players,
       losersIsNext,
-      stack.lastPartnerByPlayer,
-      manualMode ? makeInteraction(losersIsNext) : undefined,
-      eligibleIds,
-      totalSelectedCount,
-      manualMode
+      manualMode ? makeInteraction(losersIsNext) : undefined
     )
   );
   section.append(stacksGrid);
@@ -430,24 +442,48 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       return;
     }
 
+    if (isRotationPaused(liveState)) {
+      const selected = useQueueUiStore.getState().stackSelectedPlayerIds;
+      if (selected.length !== WIN_LOSE_STACK_PLAYERS) {
+        alert(`Pick exactly ${WIN_LOSE_STACK_PLAYERS} players in Next lineup before starting.`);
+        onNavigate();
+        return;
+      }
+    }
+
     const started = useQueueStore
       .getState()
       .tryStartWinLoseStackMatch(openCourt.id, { manual: isRotationPaused(liveState) });
     if (!started) {
       alert(
-        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} waiting players and an open court.`
+        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in Next lineup and an open court.`
       );
     }
     onNavigate();
   });
 
-  const stickyDock = el('div', { className: 'win-lose-stack__sticky-dock', role: 'region', 'aria-label': 'Start next game' });
+  const stickyDock = el('div', {
+    className: 'win-lose-stack__sticky-dock',
+    role: 'region',
+    'aria-label': 'Start next game',
+  });
   if (blockReason) {
     stickyDock.append(
       el('p', {
         className: 'win-lose-stack__sticky-status win-lose-stack__sticky-status--blocked',
         role: 'status',
       }, [blockReason])
+    );
+  } else if (manualMode && !manualReady) {
+    stickyDock.append(
+      el('p', {
+        className: 'win-lose-stack__sticky-status',
+        role: 'status',
+      }, [
+        `Select ${WIN_LOSE_STACK_PLAYERS - selectedPlayerIds.length} more player${
+          WIN_LOSE_STACK_PLAYERS - selectedPlayerIds.length === 1 ? '' : 's'
+        } in Next lineup.`,
+      ])
     );
   } else if (activeMatchCount > 0 && autoRotationOn) {
     stickyDock.append(

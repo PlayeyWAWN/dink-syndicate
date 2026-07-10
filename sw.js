@@ -1,7 +1,7 @@
 // Dink Syndicate PWA service worker — offline-first with stale-while-revalidate HTML
 // Keep APP_VERSION in sync with index.html meta app-version
 
-const APP_VERSION = '0.3.1';
+const APP_VERSION = '0.3.2';
 const CACHE_NAME = `dink-syndicate-${APP_VERSION}`;
 
 const OFFLINE_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dink Syndicate — Offline</title><style>body{font-family:system-ui,sans-serif;padding:2rem;max-width:24rem;margin:auto;text-align:center;background:#1b4332;color:#d8f3dc}button{margin-top:1rem;padding:.6rem 1.2rem;font-size:1rem;border-radius:8px;border:none;background:#40916c;color:#fff;cursor:pointer}</style></head><body><h1>You're offline</h1><p>Connect to load the latest shell, or reopen from your home screen if you've visited before.</p><p><button type="button" onclick="location.reload()">Retry</button></p></body></html>`;

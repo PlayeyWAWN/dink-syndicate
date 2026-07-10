@@ -182,6 +182,7 @@ describe('winLoseStackMode', () => {
 
     expect(match).not.toBeNull();
     expect(match!.stackMeta?.stackPullOrder).toEqual(['p2', 'p4', 'p5', 'p6']);
+    expect(match!.playerIds).toEqual(['p2', 'p4', 'p5', 'p6']);
     expect(nextState.winLoseStack?.winnerStack).toEqual(['p1', 'p3']);
     expect(nextState.winLoseStack?.nextUp).toBe('losers');
   });
@@ -202,6 +203,7 @@ describe('winLoseStackMode', () => {
     });
     expect(match).not.toBeNull();
     expect(match!.stackMeta?.stackPullOrder).toEqual(['p1', 'p2', 'l1', 'l2']);
+    expect(match!.playerIds).toEqual(['p1', 'p2', 'l1', 'l2']);
     expect(match!.stackMeta?.originStackByPlayer).toEqual({
       p1: 'winners',
       p2: 'winners',
@@ -231,6 +233,7 @@ describe('winLoseStackMode', () => {
     });
     expect(match).not.toBeNull();
     expect(match!.stackMeta?.stackPullOrder).toEqual(['p1', 'p2', 'p3', 'l1']);
+    expect(match!.playerIds).toEqual(['p1', 'p2', 'p3', 'l1']);
     expect(nextState.winLoseStack?.winnerStack).toEqual([]);
     expect(nextState.winLoseStack?.loserStack).toEqual(['l2', 'l3']);
   });
@@ -310,7 +313,7 @@ describe('winLoseStackMode', () => {
     expect(resolveStackStartPlayerIds(stack, ['p1', 'p2'])).toEqual(['p1', 'p2', 'p3', 'p4']);
   });
 
-  it('resolves manual lineup across both stacks', () => {
+  it('resolves manual lineup across both stacks in tap order', () => {
     const stack = {
       winnerStack: ['p1', 'p2', 'p3'],
       loserStack: ['l1', 'l2', 'l3'],
@@ -326,7 +329,8 @@ describe('winLoseStackMode', () => {
     ]);
     expect(
       resolveStackStartPlayerIds(stack, ['p2', 'l2', 'p1', 'l1'], { crossStack: true })
-    ).toEqual(['p1', 'p2', 'l1', 'l2']);
+    ).toEqual(['p2', 'l2', 'p1', 'l1']);
+    expect(resolveStackStartPlayerIds(stack, ['p1', 'p2'], { crossStack: true })).toBeNull();
   });
 
   it('without crossStack, resolve ignores other-stack selection and uses Next-Up only', () => {
@@ -340,6 +344,28 @@ describe('winLoseStackMode', () => {
     expect(
       resolveStackStartPlayerIds(stack, ['p1', 'p2', 'p3', 'l1'], { crossStack: false })
     ).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
+
+  it('starts a mid-session manual cross-stack match in selection order', () => {
+    const state = baseState({
+      completedMatches: [completedStackMatch()],
+      rotationPaused: true,
+      winLoseStack: {
+        winnerStack: ['p1', 'p2', 'p3'],
+        loserStack: ['l1', 'l2', 'l3'],
+        nextUp: 'winners',
+        lastPartnerByPlayer: {},
+      },
+    });
+
+    const { state: nextState, match } = startNextStackMatch(state, 'court-1', {
+      playerIds: ['l1', 'p2', 'p1', 'l2'],
+    });
+    expect(match).not.toBeNull();
+    expect(match!.playerIds).toEqual(['l1', 'p2', 'p1', 'l2']);
+    expect(match!.stackMeta?.stackPullOrder).toEqual(['l1', 'p2', 'p1', 'l2']);
+    expect(nextState.winLoseStack?.winnerStack).toEqual(['p3']);
+    expect(nextState.winLoseStack?.loserStack).toEqual(['l3']);
   });
 
   it('builds a four-player lineup from the front of the due stack only', () => {
