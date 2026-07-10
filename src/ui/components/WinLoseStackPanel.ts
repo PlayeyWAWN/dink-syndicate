@@ -12,6 +12,8 @@ import { isRotationPaused, QueueState } from '@/types/queue';
 import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
 import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 import {
+  getAllWaitingStackIds,
+  getDefaultStackSelection,
   getStackStartBlockReason,
   WIN_LOSE_STACK_PLAYERS,
 } from '@/modules/game-mode/winLoseStackMode';
@@ -26,6 +28,10 @@ export interface WinLoseStackPanelOptions {
 
 interface StackColumnInteraction {
   manualMode: boolean;
+  /** When true, this column participates in selection (manual: both stacks). */
+  selectable: boolean;
+  /** When true, show reorder arrows (Next-Up column only). */
+  allowReorder: boolean;
   selectedPlayerIds: string[];
   onToggleSelect: (playerId: string) => void;
   onReorder: (playerId: string, direction: 'up' | 'down') => void;
@@ -36,24 +42,24 @@ function playerName(players: Player[], playerId: string): string {
 }
 
 function getLineupPreviewIds(
-  dueStackIds: string[],
   selectedPlayerIds: string[],
-  manualMode: boolean
+  manualMode: boolean,
+  eligibleIds: string[]
 ): string[] {
-  if (dueStackIds.length < WIN_LOSE_STACK_PLAYERS) {
-    return dueStackIds.slice(0, WIN_LOSE_STACK_PLAYERS);
+  if (eligibleIds.length < WIN_LOSE_STACK_PLAYERS) {
+    return eligibleIds.slice(0, WIN_LOSE_STACK_PLAYERS);
   }
 
   if (
     manualMode &&
     selectedPlayerIds.length === WIN_LOSE_STACK_PLAYERS &&
-    selectedPlayerIds.every((id) => dueStackIds.includes(id))
+    selectedPlayerIds.every((id) => eligibleIds.includes(id))
   ) {
     const selectedSet = new Set(selectedPlayerIds);
-    return dueStackIds.filter((id) => selectedSet.has(id));
+    return eligibleIds.filter((id) => selectedSet.has(id));
   }
 
-  return dueStackIds.slice(0, WIN_LOSE_STACK_PLAYERS);
+  return eligibleIds.slice(0, WIN_LOSE_STACK_PLAYERS);
 }
 
 function renderNextLineupPreview(
@@ -128,13 +134,14 @@ function renderStackColumn(
   players: Player[],
   isNextUp: boolean,
   lastPartnerByPlayer: Record<string, string> = {},
-  interaction?: StackColumnInteraction
+  interaction?: StackColumnInteraction,
+  lineupEligibleIds: string[] = playerIds,
+  totalSelectedCount = 0,
+  crossStackManual = false
 ): HTMLElement {
-  const manualMode = interaction?.manualMode === true && isNextUp;
+  const selectable = interaction?.selectable === true;
+  const allowReorder = interaction?.allowReorder === true && isNextUp;
   const selectedPlayerIds = interaction?.selectedPlayerIds ?? [];
-  const selectedCount = manualMode
-    ? selectedPlayerIds.filter((id) => playerIds.includes(id)).length
-    : 0;
 
   const column = el('div', {
     className: `win-lose-stack__column${isNextUp ? ' win-lose-stack__column--next-up' : ''}`,
@@ -148,8 +155,8 @@ function renderStackColumn(
     el('h3', { className: 'win-lose-stack__column-title' }, [title]),
     isNextUp
       ? el('span', { className: 'win-lose-stack__next-badge' }, [
-          manualMode && playerIds.length >= WIN_LOSE_STACK_PLAYERS
-            ? `Next game · ${selectedCount}/${WIN_LOSE_STACK_PLAYERS} selected`
+          interaction?.manualMode && lineupEligibleIds.length >= WIN_LOSE_STACK_PLAYERS
+            ? `Next game · ${totalSelectedCount}/${WIN_LOSE_STACK_PLAYERS} selected`
             : dueCount >= WIN_LOSE_STACK_PLAYERS
               ? `Next game · top ${WIN_LOSE_STACK_PLAYERS}`
               : `Next game · ${dueCount}/${WIN_LOSE_STACK_PLAYERS}`,
@@ -158,25 +165,39 @@ function renderStackColumn(
   ]);
   column.append(header);
 
-  if (isNextUp && dueCount > 0) {
+  if (isNextUp && (dueCount > 0 || (crossStackManual && selectable))) {
     column.append(
       el('p', { className: 'win-lose-stack__due-hint' }, [
-        manualMode && playerIds.length >= WIN_LOSE_STACK_PLAYERS
-          ? 'Tap players to choose the lineup (up to 4). Use arrows to reorder.'
+        crossStackManual && selectable
+          ? 'Tap any waiting players across both stacks (up to 4). Use arrows to reorder this stack.'
           : dueCount >= WIN_LOSE_STACK_PLAYERS
             ? 'Partners shown below — notify these four when a court opens.'
             : `Need ${WIN_LOSE_STACK_PLAYERS - dueCount} more in this stack before the next game can start.`,
       ])
     );
+  } else if (!isNextUp && crossStackManual && selectable) {
+    column.append(
+      el('p', { className: 'win-lose-stack__due-hint' }, [
+        'Tap players here too — manual mode can pull from either stack.',
+      ])
+    );
   }
 
-  const previewIds = getLineupPreviewIds(playerIds, selectedPlayerIds, manualMode);
-  if (isNextUp && playerIds.length >= WIN_LOSE_STACK_PLAYERS && previewIds.length === WIN_LOSE_STACK_PLAYERS) {
+  const previewIds = getLineupPreviewIds(
+    selectedPlayerIds,
+    selectable,
+    lineupEligibleIds
+  );
+  if (
+    isNextUp &&
+    lineupEligibleIds.length >= WIN_LOSE_STACK_PLAYERS &&
+    previewIds.length === WIN_LOSE_STACK_PLAYERS
+  ) {
     column.append(renderNextLineupPreview(previewIds, players, lastPartnerByPlayer));
   }
 
   const list = el('ol', { className: 'win-lose-stack__list' });
-  const showFullList = manualMode;
+  const showFullList = selectable;
   const waitingIds = showFullList
     ? playerIds
     : isNextUp && dueCount >= WIN_LOSE_STACK_PLAYERS
@@ -198,17 +219,17 @@ function renderStackColumn(
     waitingIds.forEach((playerId, index) => {
       const name = playerName(players, playerId);
       const stackIndex = waitingOffset + index;
-      const isSelected = manualMode && selectedPlayerIds.includes(playerId);
+      const isSelected = selectable && selectedPlayerIds.includes(playerId);
       const isDue =
         isNextUp &&
-        !manualMode &&
+        !selectable &&
         dueCount < WIN_LOSE_STACK_PLAYERS &&
         stackIndex < dueCount;
 
       const itemClasses = [
         'win-lose-stack__item',
         isDue ? 'win-lose-stack__item--due' : '',
-        manualMode ? 'win-lose-stack__item--selectable' : '',
+        selectable ? 'win-lose-stack__item--selectable' : '',
         isSelected ? 'win-lose-stack__item--selected' : '',
       ]
         .filter(Boolean)
@@ -219,7 +240,7 @@ function renderStackColumn(
         el('span', { className: 'win-lose-stack__name' }, [name]),
       ];
 
-      if (manualMode && interaction) {
+      if (allowReorder && interaction) {
         const actions = el('div', { className: 'win-lose-stack__item-actions' }, [
           renderReorderButton(
             'Move up',
@@ -241,7 +262,7 @@ function renderStackColumn(
 
       const item = el('li', { className: itemClasses }, itemChildren);
 
-      if (manualMode && interaction) {
+      if (selectable && interaction) {
         item.setAttribute('role', 'button');
         item.setAttribute('tabindex', '0');
         item.setAttribute(
@@ -273,21 +294,21 @@ function renderStackColumn(
   return column;
 }
 
-function ensureManualStackSelection(dueStackIds: string[]): void {
+function ensureManualStackSelection(eligibleIds: string[], defaults: string[]): void {
   const ui = useQueueUiStore.getState();
-  const valid = ui.stackSelectedPlayerIds.filter((id) => dueStackIds.includes(id));
+  const valid = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
 
   if (valid.length !== ui.stackSelectedPlayerIds.length) {
-    if (valid.length === 0 && dueStackIds.length >= WIN_LOSE_STACK_PLAYERS) {
-      ui.syncStackDefaultSelection(dueStackIds);
+    if (valid.length === 0 && defaults.length >= WIN_LOSE_STACK_PLAYERS) {
+      ui.syncStackDefaultSelection(defaults);
     } else {
       ui.setStackSelectedPlayerIds(valid);
     }
     return;
   }
 
-  if (ui.stackSelectedPlayerIds.length === 0 && dueStackIds.length >= WIN_LOSE_STACK_PLAYERS) {
-    ui.syncStackDefaultSelection(dueStackIds);
+  if (ui.stackSelectedPlayerIds.length === 0 && defaults.length >= WIN_LOSE_STACK_PLAYERS) {
+    ui.syncStackDefaultSelection(defaults);
   }
 }
 
@@ -300,32 +321,33 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   const blockReason = getStackStartBlockReason(queueState, openCourtCount, activeMatchCount);
   const canStart = blockReason == null;
 
-  const dueStackIds =
-    stack.nextUp === 'winners' ? stack.winnerStack : stack.loserStack;
+  const eligibleIds = getAllWaitingStackIds(stack);
+  const defaultSelection = getDefaultStackSelection(stack, { crossStack: manualMode });
 
   if (manualMode) {
-    ensureManualStackSelection(dueStackIds);
+    ensureManualStackSelection(eligibleIds, defaultSelection);
   }
 
   const selectedPlayerIds = manualMode
     ? useQueueUiStore.getState().stackSelectedPlayerIds
     : [];
+  const totalSelectedCount = selectedPlayerIds.filter((id) => eligibleIds.includes(id)).length;
 
-  const stackInteraction: StackColumnInteraction | undefined = manualMode
-    ? {
-        manualMode: true,
-        selectedPlayerIds,
-        onToggleSelect: (playerId) => {
-          useQueueUiStore.getState().toggleStackSelectedPlayer(playerId, dueStackIds);
-          onNavigate();
-        },
-        onReorder: (playerId, direction) => {
-          const ok = useQueueStore.getState().reorderStackPlayer(playerId, direction);
-          if (!ok) return;
-          onNavigate();
-        },
-      }
-    : undefined;
+  const makeInteraction = (allowReorder: boolean): StackColumnInteraction => ({
+    manualMode: true,
+    selectable: true,
+    allowReorder,
+    selectedPlayerIds,
+    onToggleSelect: (playerId) => {
+      useQueueUiStore.getState().toggleStackSelectedPlayer(playerId, eligibleIds);
+      onNavigate();
+    },
+    onReorder: (playerId, direction) => {
+      const ok = useQueueStore.getState().reorderStackPlayer(playerId, direction);
+      if (!ok) return;
+      onNavigate();
+    },
+  });
 
   const section = el('section', { className: 'queue-section queue-section--stacks' });
   const headerRow = el('div', { className: 'queue-section__header win-lose-stack__header' });
@@ -349,23 +371,32 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
 
   section.append(renderRotationControls({ onNavigate, mode: 'stack' }));
 
+  const winnersIsNext = stack.nextUp === 'winners';
+  const losersIsNext = stack.nextUp === 'losers';
+
   const stacksGrid = el('div', { className: 'win-lose-stack__grid' });
   stacksGrid.append(
     renderStackColumn(
       'Winners',
       stack.winnerStack,
       players,
-      stack.nextUp === 'winners',
+      winnersIsNext,
       stack.lastPartnerByPlayer,
-      stack.nextUp === 'winners' ? stackInteraction : undefined
+      manualMode ? makeInteraction(winnersIsNext) : undefined,
+      eligibleIds,
+      totalSelectedCount,
+      manualMode
     ),
     renderStackColumn(
       'Losers',
       stack.loserStack,
       players,
-      stack.nextUp === 'losers',
+      losersIsNext,
       stack.lastPartnerByPlayer,
-      stack.nextUp === 'losers' ? stackInteraction : undefined
+      manualMode ? makeInteraction(losersIsNext) : undefined,
+      eligibleIds,
+      totalSelectedCount,
+      manualMode
     )
   );
   section.append(stacksGrid);
@@ -404,7 +435,7 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       .tryStartWinLoseStackMatch(openCourt.id, { manual: isRotationPaused(liveState) });
     if (!started) {
       alert(
-        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack and an open court.`
+        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} waiting players and an open court.`
       );
     }
     onNavigate();

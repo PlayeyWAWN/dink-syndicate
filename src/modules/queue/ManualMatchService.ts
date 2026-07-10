@@ -15,7 +15,7 @@ import {
 } from '@/modules/matchmaking/synergyTeam';
 import { AppSettings } from '@/types/app-data';
 import { Player } from '@/types/player';
-import { QueueEntry } from '@/types/queue';
+import { Match, QueueEntry, QueueState } from '@/types/queue';
 
 export interface ManualMatchValidation {
   ok: true;
@@ -194,6 +194,23 @@ export function filterReplacementCandidates(
     return available.filter((candidate) => candidate.gender === player.gender);
   }
   return available;
+}
+
+/**
+ * Win/Lose Stack replace pool: anyone not currently on an active match
+ * (stack waiters + standby), excluding the player being replaced.
+ */
+export function getStackReplaceCandidates(
+  players: Player[],
+  queueState: QueueState,
+  match: Pick<Match, 'playerIds' | 'format'>,
+  playerBeingReplaced: Player
+): Player[] {
+  const onCourt = new Set(queueState.activeMatches.flatMap((item) => item.playerIds));
+  const pool = players.filter(
+    (candidate) => candidate.id !== playerBeingReplaced.id && !onCourt.has(candidate.id)
+  );
+  return filterReplacementCandidates(match.format, playerBeingReplaced, pool);
 }
 
 /** Standby players with the longest wait first (oldest availableSince at top). */

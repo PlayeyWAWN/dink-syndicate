@@ -32,7 +32,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'How does Win/Lose Stack work?',
     answer:
-      'Check in at least four players and choose Win/Lose Stack in Settings. Players split evenly into Winners and Losers piles at session start. After each game, record the winner — players route to the back of their pile and Next-Up alternates between piles. Partners shuffle each game. In manual mode (Auto-rotation off), tap players in the Next-Up pile to pick the lineup and use arrows to reorder before Start next game.',
+      'Check in at least four players and choose Win/Lose Stack in Settings. Players split evenly into Winners and Losers piles at session start. After each game, record the winner — players route to the back of their pile and Next-Up alternates between piles. Partners shuffle each game. In manual mode (Auto-rotation off), tap any waiting players across both stacks to pick the lineup (up to 4), reorder the Next-Up pile with arrows, then Start next game. On an active match you can replace a player with anyone not already on court.',
   },
   {
     question: 'How does Ladder/Waterfall work?',

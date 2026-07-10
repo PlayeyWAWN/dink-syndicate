@@ -257,7 +257,7 @@ export const livePublishService = {
 
     const queueState = useQueueStore.getState().queueState;
     const stackSelectedPlayerIds = isRotationPaused(queueState)
-      ? useQueueUiStore.getState().stackSelectedPlayerIds
+      ? useQueueUiStore.getState().stackSelectedPlayerIds.slice(0, 4)
       : undefined;
 
     const snapshot = buildLiveSnapshot({

@@ -1,5 +1,5 @@
-import { renderWallboardSponsors } from '@/ui/components/wallboard/WallboardSections';
-import { SponsorConfig } from '@/types/live';
+import { renderWallboardQueue, renderWallboardSponsors } from '@/ui/components/wallboard/WallboardSections';
+import { PublicPlayer, PublicQueueEntry, SponsorConfig } from '@/types/live';
 
 describe('renderWallboardSponsors', () => {
   it('renders empty spacer cells before and after centered sponsors', () => {
@@ -33,5 +33,30 @@ describe('renderWallboardSponsors', () => {
     expect(slots[3].querySelector('.live-wallboard__sponsor-logo')).not.toBeNull();
     expect(slots[4].classList.contains('live-wallboard__sponsor-slot--empty')).toBe(true);
     expect(slots[5].classList.contains('live-wallboard__sponsor-slot--empty')).toBe(true);
+  });
+});
+
+describe('renderWallboardQueue', () => {
+  it('clamps oversized stack queue entries to a 2v2 doubles lineup', () => {
+    const players: PublicPlayer[] = Array.from({ length: 8 }, (_, index) => ({
+      id: `p${index + 1}`,
+      name: `Player ${index + 1}`,
+      gamesPlayed: 1,
+      wins: 0,
+      losses: 1,
+    }));
+    const queueNext: PublicQueueEntry[] = [
+      {
+        position: 1,
+        playerIds: players.map((player) => player.id),
+        label: 'Stale winners vs losers',
+        format: 'doubles',
+      },
+    ];
+
+    const section = renderWallboardQueue(queueNext, players);
+    const chips = section.querySelectorAll('.match-player-chip');
+    // Four player chips total (2 per team) — not 8 from a stale stack dump.
+    expect(chips.length).toBe(4);
   });
 });

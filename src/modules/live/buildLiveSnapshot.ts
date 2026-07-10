@@ -1,6 +1,7 @@
 import { queueEntryLabel, splitTeams } from '@/lib/format-utils';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { buildNextStackLineupPlayerIds } from '@/modules/game-mode/winLoseStackMode';
+import { isRotationPaused } from '@/types/queue';
 import { computeRankingDeltas } from '@/modules/live/ranking-deltas';
 import { computeRankingPoints, comparePlayersForRanking } from '@/modules/stats/ranking-utils';
 import { Court } from '@/types/court';
@@ -74,10 +75,19 @@ function buildQueueNext(
 ): PublicQueueEntry[] {
   if (gameMode === 'win_lose_stack' && queueState.winLoseStack) {
     const stack = queueState.winLoseStack;
-    const playerIds = buildNextStackLineupPlayerIds(stack, stackSelectedPlayerIds);
-    if (!playerIds) return [];
+    const crossStack = isRotationPaused(queueState);
+    // Cap selection so a stale UI selection cannot publish winners+losers as 4v4.
+    const selection = stackSelectedPlayerIds.slice(0, 4);
+    const playerIds = buildNextStackLineupPlayerIds(stack, selection, {
+      crossStack,
+    });
+    if (!playerIds || playerIds.length !== 4) return [];
 
-    const stackLabel = stack.nextUp === 'winners' ? 'Winners stack' : 'Losers stack';
+    const stackLabel = crossStack
+      ? 'Next game'
+      : stack.nextUp === 'winners'
+        ? 'Winners stack'
+        : 'Losers stack';
     const { teamA, teamB } = splitTeams(playerIds);
     const namesA = teamA
       .map((id) => players.find((p) => p.id === id)?.name ?? '?')
@@ -91,6 +101,7 @@ function buildQueueNext(
         position: 1,
         playerIds,
         label: `${stackLabel}: ${namesA} vs ${namesB}`,
+        format: 'doubles',
       },
     ];
   }

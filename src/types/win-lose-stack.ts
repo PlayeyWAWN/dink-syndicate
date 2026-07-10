@@ -13,6 +13,13 @@ export const MatchStackMetaSchema = z.object({
   sourceStack: z.enum(['winners', 'losers']),
   /** Player IDs in the order they were pulled from the stack front. */
   stackPullOrder: z.array(z.string()).min(2).max(4),
+  /**
+   * Which pile each pulled player came from (needed when the first game
+   * pulls across both stacks). Cancel restores each player to their origin.
+   */
+  originStackByPlayer: z
+    .record(z.string(), z.enum(['winners', 'losers']))
+    .optional(),
 });
 
 export type MatchStackMeta = z.infer<typeof MatchStackMetaSchema>;

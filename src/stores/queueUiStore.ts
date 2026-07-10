@@ -40,10 +40,10 @@ interface QueueUiState {
   clearLadderStartNotices: () => void;
   setLadderSelectedPoolPlayer: (playerId: string | null) => void;
   clearLadderSelection: () => void;
-  toggleStackSelectedPlayer: (playerId: string, dueStackIds: string[]) => void;
+  toggleStackSelectedPlayer: (playerId: string, eligibleIds: string[]) => void;
   setStackSelectedPlayerIds: (ids: string[]) => void;
   clearStackSelection: () => void;
-  syncStackDefaultSelection: (dueStackIds: string[]) => void;
+  syncStackDefaultSelection: (eligibleIds: string[]) => void;
   hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
@@ -99,8 +99,8 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
   setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
   clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
-  toggleStackSelectedPlayer: (playerId, dueStackIds) => {
-    if (!dueStackIds.includes(playerId)) return;
+  toggleStackSelectedPlayer: (playerId, eligibleIds) => {
+    if (!eligibleIds.includes(playerId)) return;
     const current = get().stackSelectedPlayerIds;
     if (current.includes(playerId)) {
       set({ stackSelectedPlayerIds: current.filter((id) => id !== playerId) });
@@ -111,8 +111,8 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   },
   setStackSelectedPlayerIds: (stackSelectedPlayerIds) => set({ stackSelectedPlayerIds }),
   clearStackSelection: () => set({ stackSelectedPlayerIds: [] }),
-  syncStackDefaultSelection: (dueStackIds) =>
-    set({ stackSelectedPlayerIds: dueStackIds.slice(0, 4) }),
+  syncStackDefaultSelection: (eligibleIds) =>
+    set({ stackSelectedPlayerIds: eligibleIds.slice(0, 4) }),
   hydrateFromSettings: (settings) => {
     const courtFormat: CourtFormat =
       settings?.courtFormat === 'singles' ? 'singles' : 'doubles';

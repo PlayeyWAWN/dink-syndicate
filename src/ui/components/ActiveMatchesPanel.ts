@@ -15,6 +15,8 @@ export interface ActiveMatchesPanelOptions {
   courts: Court[];
   players: Player[];
   available: Player[];
+  /** When set, used for REPLACE on matches that have stackMeta. */
+  getStackReplacementPool?: (match: Match, player: Player) => Player[];
   synergy?: SynergyDisplayOptions;
   onComplete: (matchId: string, team: 'A' | 'B') => void;
   onCancel: (matchId: string) => void;
@@ -35,6 +37,7 @@ export function renderActiveMatchesPanel(options: ActiveMatchesPanelOptions): HT
     courts,
     players,
     available,
+    getStackReplacementPool,
     synergy,
     onComplete,
     onCancel,
@@ -134,11 +137,20 @@ export function renderActiveMatchesPanel(options: ActiveMatchesPanelOptions): HT
             const player = players.find((item) => item.id === playerId);
             if (!player) return;
 
+            const stackPool =
+              match.stackMeta && getStackReplacementPool
+                ? getStackReplacementPool(match, player)
+                : undefined;
+
             openQueuePlayerEditDialog({
               lineup: match,
               player,
               players,
               available,
+              replacementPool: stackPool,
+              replaceHint: stackPool
+                ? 'Players waiting in stacks or not on court.'
+                : undefined,
               onSwap: (otherPlayerId) => {
                 if (!onSwapPlayer(match.id, playerId, otherPlayerId)) {
                   alert('Could not swap — gender rules for this match mode may block that lineup.');
