@@ -1,6 +1,6 @@
 {
   "name": "dink-syndicate",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "description": "Dink Syndicate — offline-first pickleball queue manager PWA",
   "type": "module",
   "scripts": {

@@ -195,4 +195,167 @@ describe('buildLiveSnapshot', () => {
     const aliceDelta = second.rankings.find((r) => r.playerId === 'p1')?.delta;
     expect(aliceDelta).toBe('down');
   });
+
+  it('builds win/lose stack queue as a paired doubles lineup, not the full stack', () => {
+    const stackPlayers: Player[] = [
+      ...players,
+      {
+        id: 'p5',
+        name: 'Eve',
+        gender: 'female' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'p6',
+        name: 'Frank',
+        gender: 'male' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ];
+
+    const snapshot = buildLiveSnapshot({
+      sessionId: 'sess-1',
+      organizerName: 'Host',
+      publishToken: 'tok',
+      isActive: true,
+      settings: { organizerName: 'Host', courtCount: 2, gameMode: 'win_lose_stack' },
+      courts,
+      queueState: {
+        ...queueState,
+        queue: [],
+        winLoseStack: {
+          winnerStack: ['p1', 'p2'],
+          loserStack: ['p3', 'p4', 'p5', 'p6'],
+          nextUp: 'losers',
+          lastPartnerByPlayer: {},
+        },
+        rotationPaused: true,
+      },
+      players: stackPlayers,
+      stackSelectedPlayerIds: ['p3', 'p4', 'p5', 'p6'],
+      viewerStats: {
+        totalUnique: 0,
+        peakConcurrent: 0,
+        totalViewMinutes: 0,
+        publishStartedAt: Date.now(),
+      },
+    });
+
+    expect(snapshot.queueNext).toHaveLength(1);
+    expect(snapshot.queueNext[0]?.playerIds).toEqual(['p3', 'p4', 'p5', 'p6']);
+    expect(snapshot.queueNext[0]?.playerIds).toHaveLength(4);
+    expect(snapshot.queueNext[0]?.format).toBe('doubles');
+    expect(snapshot.queueNext[0]?.label).toContain('Cara & Dan vs Eve & Frank');
+  });
+
+  it('never publishes winners vs losers as 4v4 when selection is oversized', () => {
+    const stackPlayers: Player[] = [
+      ...players,
+      {
+        id: 'p5',
+        name: 'Eve',
+        gender: 'female' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'p6',
+        name: 'Frank',
+        gender: 'male' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'p7',
+        name: 'Gina',
+        gender: 'female' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+      {
+        id: 'p8',
+        name: 'Hank',
+        gender: 'male' as const,
+        excluded: false,
+        checkedIn: true,
+        gamesPlayed: 1,
+        wins: 0,
+        losses: 1,
+        career: { gamesPlayed: 1, wins: 0, losses: 1 },
+        dupr: { duprConnected: false, duprRatingSource: 'manual' as const },
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ];
+
+    const snapshot = buildLiveSnapshot({
+      sessionId: 'sess-1',
+      organizerName: 'Host',
+      publishToken: 'tok',
+      isActive: true,
+      settings: { organizerName: 'Host', courtCount: 2, gameMode: 'win_lose_stack' },
+      courts,
+      queueState: {
+        ...queueState,
+        queue: [],
+        winLoseStack: {
+          winnerStack: ['p1', 'p2', 'p3', 'p4'],
+          loserStack: ['p5', 'p6', 'p7', 'p8'],
+          nextUp: 'winners',
+          lastPartnerByPlayer: {},
+        },
+        rotationPaused: true,
+      },
+      players: stackPlayers,
+      // Stale selection that looks like winners pile + losers pile.
+      stackSelectedPlayerIds: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'],
+      viewerStats: {
+        totalUnique: 0,
+        peakConcurrent: 0,
+        totalViewMinutes: 0,
+        publishStartedAt: Date.now(),
+      },
+    });
+
+    expect(snapshot.queueNext).toHaveLength(1);
+    expect(snapshot.queueNext[0]?.playerIds).toHaveLength(4);
+    expect(snapshot.queueNext[0]?.playerIds).toEqual(['p1', 'p2', 'p3', 'p4']);
+  });
 });

@@ -21,6 +21,7 @@ import { openPlayerPauseDialog } from '@/ui/components/PlayerPauseDialog';
 import {
   assessMatchBalance,
   buildManualMatch,
+  getStackReplaceCandidates,
 } from '@/modules/queue/ManualMatchService';
 import { renderLivePublishPanel } from '@/ui/components/LivePublishPanel';
 import { livePublishService } from '@/modules/live/LivePublishService';
@@ -69,6 +70,10 @@ export function renderQueueScreen(container: HTMLElement): void {
         courts,
         players,
         available,
+        getStackReplacementPool: stackMode
+          ? (match, player) =>
+              getStackReplaceCandidates(players, queueState, match, player)
+          : undefined,
         synergy: synergyDisplay,
         onComplete: (matchId, team) => {
           completeMatch(matchId, team);

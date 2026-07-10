@@ -2,7 +2,7 @@
 
 export const APP_NAME = 'Dink Syndicate';
 export const APP_TAGLINE = 'Ball Engagement Network';
-export const APP_VERSION = '0.3.0';
+export const APP_VERSION = '0.3.3';
 /** Developer contact — Settings → App information. */
 export const DEVELOPER_FACEBOOK_URL =
   'https://www.facebook.com/profile.php?id=61591397784939';

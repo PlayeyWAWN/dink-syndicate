@@ -1,6 +1,13 @@
 import { splitTeams } from '@/lib/format-utils';
-import { buildManualMatch, sortAvailableByLongestWait, validateEntryGenderRules } from '@/modules/queue/ManualMatchService';
+import {
+  buildManualMatch,
+  getStackReplaceCandidates,
+  sortAvailableByLongestWait,
+  validateEntryGenderRules,
+} from '@/modules/queue/ManualMatchService';
 import { createPlayer } from '@/types/player';
+import { emptyWinLoseStackState } from '@/types/win-lose-stack';
+import { Match, QueueState } from '@/types/queue';
 
 describe('ManualMatchService', () => {
   it('builds ordered mixed doubles from four players', () => {
@@ -65,5 +72,58 @@ describe('ManualMatchService', () => {
     ];
     const sorted = sortAvailableByLongestWait(players);
     expect(sorted.map((player) => player.id)).toEqual(['long', 'mid', 'recent']);
+  });
+
+  it('includes stack waiters and standby in the stack replace pool, not on-court players', () => {
+    const onCourt = createPlayer({ id: 'on1', name: 'On Court' });
+    const partner = createPlayer({ id: 'on2', name: 'Partner' });
+    const opp1 = createPlayer({ id: 'on3', name: 'Opp1' });
+    const opp2 = createPlayer({ id: 'on4', name: 'Opp2' });
+    const waiter = createPlayer({ id: 'wait1', name: 'Waiter' });
+    const standby = createPlayer({ id: 'standby', name: 'Standby', checkedIn: false });
+    const otherCourt = createPlayer({ id: 'other', name: 'Other Court' });
+
+    const match: Match = {
+      id: 'm1',
+      courtId: 'c1',
+      playerIds: [onCourt.id, partner.id, opp1.id, opp2.id],
+      format: 'doubles',
+      status: 'active',
+      winnerPlayerIds: [],
+      source: 'auto',
+      startedAt: Date.now(),
+      stackMeta: { sourceStack: 'winners', stackPullOrder: [onCourt.id, partner.id, opp1.id, opp2.id] },
+    };
+
+    const queueState: QueueState = {
+      queue: [],
+      activeMatches: [
+        match,
+        {
+          ...match,
+          id: 'm2',
+          courtId: 'c2',
+          playerIds: [otherCourt.id, 'x2', 'x3', 'x4'],
+        },
+      ],
+      completedMatches: [],
+      winLoseStack: {
+        ...emptyWinLoseStackState(),
+        winnerStack: [waiter.id],
+      },
+    };
+
+    const pool = getStackReplaceCandidates(
+      [onCourt, partner, opp1, opp2, waiter, standby, otherCourt],
+      queueState,
+      match,
+      onCourt
+    );
+    const ids = pool.map((player) => player.id);
+    expect(ids).toContain(waiter.id);
+    expect(ids).toContain(standby.id);
+    expect(ids).not.toContain(onCourt.id);
+    expect(ids).not.toContain(otherCourt.id);
+    expect(ids).not.toContain(partner.id);
   });
 });

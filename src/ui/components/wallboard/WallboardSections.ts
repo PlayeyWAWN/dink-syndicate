@@ -271,9 +271,13 @@ export function renderWallboardQueue(
 
   const list = el('div', { className: 'live-wallboard__queue-list match-queue-list' });
   for (const entry of queueNext) {
-    const team1Total = teamTotalGamesPublic(entry.playerIds, players, 'A');
-    const team2Total = teamTotalGamesPublic(entry.playerIds, players, 'B');
-    const { teamA, teamB } = splitTeams(entry.playerIds);
+    // Doubles wallboard cards must stay 2v2 — clamp stale stack snapshots that
+    // previously published an entire winners/losers pile as one queue entry.
+    const doublesLineup =
+      entry.playerIds.length > 4 ? entry.playerIds.slice(0, 4) : entry.playerIds;
+    const team1Total = teamTotalGamesPublic(doublesLineup, players, 'A');
+    const team2Total = teamTotalGamesPublic(doublesLineup, players, 'B');
+    const { teamA, teamB } = splitTeams(doublesLineup);
 
     const card = el('article', { className: 'match-queue-card live-wallboard__queue-card' });
     const row = el('div', { className: 'live-wallboard__queue-card-row' });
@@ -304,7 +308,7 @@ export function renderWallboardQueue(
           className: `match-queue-card__team-label match-queue-card__team-label--${team === 'A' ? 'team1' : 'team2'}`,
         }, [team === 'A' ? 'Team 1' : 'Team 2']),
         el('div', { className: 'match-queue-card__team-avg' }, [
-          `Avg. ${teamAvgGamesPublic(entry.playerIds, players, team).toFixed(1)} games`,
+          `Avg. ${teamAvgGamesPublic(doublesLineup, players, team).toFixed(1)} games`,
         ])
       );
       const playersRow = el('div', { className: 'match-queue-card__team-players' });

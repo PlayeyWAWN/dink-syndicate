@@ -23,7 +23,7 @@ const AUTO_ROTATION_COPY: Record<
   },
   stack: {
     manualLead:
-      'Manual mode — tap players in the Next-Up stack to pick the lineup (up to 4), reorder with arrows, then use Start next game.',
+      'Manual mode — tap waiting players from either stack to fill Next lineup above (Team 1, then Team 2). Tap a name again to remove, or Clear to reset. Start next game when four are selected.',
     autoLead: 'Auto-rotation is on.',
     autoDetail:
       'Routes winners and losers to their stacks after each game, alternates Next-Up between Winners and Losers piles, shuffles partners, and starts the next game when four players are ready.',

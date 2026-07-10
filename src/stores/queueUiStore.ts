@@ -40,10 +40,10 @@ interface QueueUiState {
   clearLadderStartNotices: () => void;
   setLadderSelectedPoolPlayer: (playerId: string | null) => void;
   clearLadderSelection: () => void;
-  toggleStackSelectedPlayer: (playerId: string, dueStackIds: string[]) => void;
+  toggleStackSelectedPlayer: (playerId: string, eligibleIds: string[]) => void;
   setStackSelectedPlayerIds: (ids: string[]) => void;
   clearStackSelection: () => void;
-  syncStackDefaultSelection: (dueStackIds: string[]) => void;
+  syncStackDefaultSelection: (eligibleIds?: string[]) => void;
   hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
@@ -99,20 +99,24 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   clearLadderStartNotices: () => set({ ladderStartNotices: [], ladderSelectedPoolPlayerId: null }),
   setLadderSelectedPoolPlayer: (playerId) => set({ ladderSelectedPoolPlayerId: playerId }),
   clearLadderSelection: () => set({ ladderSelectedPoolPlayerId: null }),
-  toggleStackSelectedPlayer: (playerId, dueStackIds) => {
-    if (!dueStackIds.includes(playerId)) return;
+  toggleStackSelectedPlayer: (playerId, eligibleIds) => {
+    if (!eligibleIds.includes(playerId)) return;
     const current = get().stackSelectedPlayerIds;
     if (current.includes(playerId)) {
       set({ stackSelectedPlayerIds: current.filter((id) => id !== playerId) });
       return;
     }
-    if (current.length >= 4) return;
+    // Full lineup: replace the last slot so tapping a new name swaps them in.
+    if (current.length >= 4) {
+      set({ stackSelectedPlayerIds: [...current.slice(0, 3), playerId] });
+      return;
+    }
     set({ stackSelectedPlayerIds: [...current, playerId] });
   },
   setStackSelectedPlayerIds: (stackSelectedPlayerIds) => set({ stackSelectedPlayerIds }),
   clearStackSelection: () => set({ stackSelectedPlayerIds: [] }),
-  syncStackDefaultSelection: (dueStackIds) =>
-    set({ stackSelectedPlayerIds: dueStackIds.slice(0, 4) }),
+  /** Kept for callers that still sync; manual mode no longer auto-fills. */
+  syncStackDefaultSelection: (_eligibleIds?: string[]) => set({ stackSelectedPlayerIds: [] }),
   hydrateFromSettings: (settings) => {
     const courtFormat: CourtFormat =
       settings?.courtFormat === 'singles' ? 'singles' : 'doubles';

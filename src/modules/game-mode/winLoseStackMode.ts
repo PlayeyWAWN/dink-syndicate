@@ -1,6 +1,6 @@
 import { createId } from '@/modules/matchmaking/create-id';
 import { winnerIdsForTeam } from '@/lib/format-utils';
-import { Match, QueueState } from '@/types/queue';
+import { isRotationPaused, Match, QueueState } from '@/types/queue';
 import { isPlayerMatchable, Player } from '@/types/player';
 import {
   emptyWinLoseStackState,
@@ -23,6 +23,21 @@ export function getWinLoseStackPlayerIds(state: QueueState): Set<string> {
 
 export function getNextUpStackIds(stack: WinLoseStackState): string[] {
   return stack.nextUp === 'winners' ? stack.winnerStack : stack.loserStack;
+}
+
+/** Waiting players across both piles (Winners first, then Losers). */
+export function getAllWaitingStackIds(stack: WinLoseStackState): string[] {
+  return [...stack.winnerStack, ...stack.loserStack];
+}
+
+/**
+ * True until the first stack match has been started (or completed).
+ * Cancelled-only sessions return to initial so the first lineup can be re-picked.
+ */
+export function isInitialStackLineup(state: QueueState): boolean {
+  const hasActiveStack = state.activeMatches.some((match) => match.stackMeta != null);
+  const hasCompletedStack = state.completedMatches.some((match) => match.stackMeta != null);
+  return !hasActiveStack && !hasCompletedStack;
 }
 
 export function flipNextUp(stack: WinLoseStackState): WinLoseStackState {
@@ -79,40 +94,85 @@ function removeFrontPlayers(
   };
 }
 
-function removeSpecificPlayersFromDueStack(
+/**
+ * Remove four selected players from either waiting pile.
+ * Pulled order matches the caller's selection order (manual tap / team slots).
+ */
+function removeSpecificPlayersFromStacks(
   stack: WinLoseStackState,
   playerIds: string[]
-): { stack: WinLoseStackState; pulled: string[] } | null {
-  const sourceStack = stack.nextUp;
-  const field = stackFieldForSource(sourceStack);
-  const dueIds = getNextUpStackIds(stack);
-
+): {
+  stack: WinLoseStackState;
+  pulled: string[];
+  originStackByPlayer: Record<string, 'winners' | 'losers'>;
+} | null {
   if (playerIds.length !== WIN_LOSE_STACK_PLAYERS) return null;
   if (new Set(playerIds).size !== WIN_LOSE_STACK_PLAYERS) return null;
 
-  const dueSet = new Set(dueIds);
-  if (!playerIds.every((id) => dueSet.has(id))) return null;
+  const waitingSet = new Set(getAllWaitingStackIds(stack));
+  if (!playerIds.every((id) => waitingSet.has(id))) return null;
 
   const selectedSet = new Set(playerIds);
-  const pulled = dueIds.filter((id) => selectedSet.has(id));
-  const remaining = dueIds.filter((id) => !selectedSet.has(id));
+  const originStackByPlayer: Record<string, 'winners' | 'losers'> = {};
+  for (const id of stack.winnerStack) {
+    if (selectedSet.has(id)) originStackByPlayer[id] = 'winners';
+  }
+  for (const id of stack.loserStack) {
+    if (selectedSet.has(id)) originStackByPlayer[id] = 'losers';
+  }
 
   return {
-    stack: setStackField(stack, field, remaining),
-    pulled,
+    stack: {
+      ...stack,
+      winnerStack: stack.winnerStack.filter((id) => !selectedSet.has(id)),
+      loserStack: stack.loserStack.filter((id) => !selectedSet.has(id)),
+    },
+    pulled: [...playerIds],
+    originStackByPlayer,
   };
 }
 
-/** First four players in the Next-Up stack — default manual selection. */
-export function getDefaultStackSelection(stack: WinLoseStackState): string[] {
+export interface StackSelectionOptions {
+  /**
+   * Manual mode — selection may span both Winners and Losers stacks.
+   * Auto-rotation keeps Next-Up-only defaults.
+   */
+  crossStack?: boolean;
+}
+
+/** Default manual selection: combined waiting piles, or Next-Up top four for auto. */
+export function getDefaultStackSelection(
+  stack: WinLoseStackState,
+  options?: StackSelectionOptions
+): string[] {
+  if (options?.crossStack) {
+    return getAllWaitingStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS);
+  }
   return getNextUpStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS);
 }
 
-/** Resolve manual start lineup: exact valid selection, else top four from due stack. */
+/** Resolve manual start lineup: exact valid selection, else default for auto mode. */
 export function resolveStackStartPlayerIds(
   stack: WinLoseStackState,
-  selectedIds: string[]
+  selectedIds: string[],
+  options?: StackSelectionOptions
 ): string[] | null {
+  if (options?.crossStack) {
+    const waiting = getAllWaitingStackIds(stack);
+    if (waiting.length < WIN_LOSE_STACK_PLAYERS) return null;
+
+    // Manual mode: only an exact 4-player tap order counts — never auto-fill.
+    if (
+      selectedIds.length === WIN_LOSE_STACK_PLAYERS &&
+      new Set(selectedIds).size === WIN_LOSE_STACK_PLAYERS &&
+      selectedIds.every((id) => waiting.includes(id))
+    ) {
+      return [...selectedIds];
+    }
+
+    return null;
+  }
+
   const dueIds = getNextUpStackIds(stack);
   if (dueIds.length < WIN_LOSE_STACK_PLAYERS) return null;
 
@@ -126,6 +186,26 @@ export function resolveStackStartPlayerIds(
   }
 
   return getDefaultStackSelection(stack);
+}
+
+/** Next due doubles lineup as [teamA1, teamA2, teamB1, teamB2] for display/sync. */
+export function buildNextStackLineupPlayerIds(
+  stack: WinLoseStackState,
+  selectedIds: string[] = [],
+  options?: StackSelectionOptions
+): string[] | null {
+  const cappedSelection = selectedIds.slice(0, WIN_LOSE_STACK_PLAYERS);
+  const lineupIds = resolveStackStartPlayerIds(stack, cappedSelection, options);
+  if (!lineupIds || lineupIds.length !== WIN_LOSE_STACK_PLAYERS) return null;
+
+  // Manual tap order is the pairing; auto mode still shuffles prior partners apart.
+  if (options?.crossStack) {
+    return lineupIds;
+  }
+
+  const paired = partnerSplitPairing(lineupIds, stack.lastPartnerByPlayer).playerIds;
+  if (paired.length !== WIN_LOSE_STACK_PLAYERS) return null;
+  return paired;
 }
 
 /** Swap a player up or down within the Next-Up stack only. */
@@ -233,7 +313,10 @@ export interface StartNextStackMatchOptions {
   playerIds?: string[];
 }
 
-/** Pull four from Next-Up stack and create an active match on the given court. */
+/** Pull four players and create an active match on the given court.
+ * Manual starts pass `playerIds` and may pull from both stacks.
+ * Auto-rotation pulls the front four from Next-Up only.
+ */
 export function startNextStackMatch(
   state: QueueState,
   courtId: string,
@@ -242,29 +325,41 @@ export function startNextStackMatch(
   let stack = ensureWinLoseStackState(state.winLoseStack);
   const sourceStack = stack.nextUp;
   const nextUpIds = getNextUpStackIds(stack);
+  const waitingCount = getAllWaitingStackIds(stack).length;
+  const crossStackManual = options?.playerIds != null;
 
-  if (nextUpIds.length < WIN_LOSE_STACK_PLAYERS) {
+  if (crossStackManual) {
+    if (waitingCount < WIN_LOSE_STACK_PLAYERS) {
+      return { state, match: null, partnerConflict: false };
+    }
+  } else if (nextUpIds.length < WIN_LOSE_STACK_PLAYERS) {
     return { state, match: null, partnerConflict: false };
   }
 
   let pulled: string[];
+  let originStackByPlayer: Record<string, 'winners' | 'losers'> | undefined;
+  let playerIds: string[];
+  let hadPartnerConflict = false;
+
   if (options?.playerIds) {
-    const removed = removeSpecificPlayersFromDueStack(stack, options.playerIds);
+    const removed = removeSpecificPlayersFromStacks(stack, options.playerIds);
     if (!removed) {
       return { state, match: null, partnerConflict: false };
     }
     stack = removed.stack;
     pulled = removed.pulled;
+    originStackByPlayer = removed.originStackByPlayer;
+    // Manual lineup order is [teamA1, teamA2, teamB1, teamB2] — keep as tapped.
+    playerIds = [...pulled];
   } else {
     const result = removeFrontPlayers(stack, sourceStack, WIN_LOSE_STACK_PLAYERS);
     stack = result.stack;
     pulled = result.pulled;
+    const paired = partnerSplitPairing(pulled, stack.lastPartnerByPlayer);
+    playerIds = paired.playerIds;
+    hadPartnerConflict = paired.hadPartnerConflict;
   }
 
-  const { playerIds, hadPartnerConflict } = partnerSplitPairing(
-    pulled,
-    stack.lastPartnerByPlayer
-  );
   stack = {
     ...stack,
     lastPartnerByPlayer: updateLastPartners(playerIds, stack.lastPartnerByPlayer),
@@ -284,6 +379,7 @@ export function startNextStackMatch(
     stackMeta: {
       sourceStack,
       stackPullOrder: pulled,
+      ...(originStackByPlayer ? { originStackByPlayer } : {}),
     },
   };
 
@@ -335,7 +431,7 @@ export function removePlayerFromWinLoseStacks(state: QueueState, playerId: strin
   };
 }
 
-/** Return a cancelled stack match's players to the front of the source stack. */
+/** Return a cancelled stack match's players to their origin piles. */
 export function returnStackMatchToQueue(
   state: QueueState,
   match: Pick<Match, 'playerIds' | 'stackMeta'>
@@ -343,8 +439,27 @@ export function returnStackMatchToQueue(
   if (!match.stackMeta) return state;
 
   let stack = ensureWinLoseStackState(state.winLoseStack);
-  const field = stackFieldForSource(match.stackMeta.sourceStack);
-  stack = prependToStack(stack, field, match.stackMeta.stackPullOrder);
+  const origins = match.stackMeta.originStackByPlayer;
+
+  if (origins && Object.keys(origins).length > 0) {
+    const winnersFront: string[] = [];
+    const losersFront: string[] = [];
+    for (const id of match.stackMeta.stackPullOrder) {
+      const origin = origins[id] ?? match.stackMeta.sourceStack;
+      if (origin === 'winners') winnersFront.push(id);
+      else losersFront.push(id);
+    }
+    if (winnersFront.length > 0) {
+      stack = prependToStack(stack, 'winnerStack', winnersFront);
+    }
+    if (losersFront.length > 0) {
+      stack = prependToStack(stack, 'loserStack', losersFront);
+    }
+  } else {
+    const field = stackFieldForSource(match.stackMeta.sourceStack);
+    stack = prependToStack(stack, field, match.stackMeta.stackPullOrder);
+  }
+
   stack = {
     ...stack,
     lastPartnerByPlayer: clearLastPartnersForPlayers(match.playerIds, stack.lastPartnerByPlayer),
@@ -384,6 +499,11 @@ export function countNextUpStackFromStack(stack: WinLoseStackState): number {
 }
 
 export function canStartWinLoseStackMatch(state: QueueState): boolean {
+  const stack = state.winLoseStack;
+  if (!stack) return false;
+  if (isRotationPaused(state)) {
+    return getAllWaitingStackIds(stack).length >= WIN_LOSE_STACK_PLAYERS;
+  }
   return countNextUpStackPlayers(state) >= WIN_LOSE_STACK_PLAYERS;
 }
 
@@ -451,6 +571,14 @@ export function getStackStartBlockReason(
     return 'No courts available. Add at least one court on the Courts tab.';
   }
 
+  const totalWaiting = stack.winnerStack.length + stack.loserStack.length;
+  if (isRotationPaused(state)) {
+    if (totalWaiting >= WIN_LOSE_STACK_PLAYERS) {
+      return null;
+    }
+    return `Need at least ${WIN_LOSE_STACK_PLAYERS} checked-in players. Currently ${totalWaiting} in stacks — check in more on the Players tab.`;
+  }
+
   const nextUpCount = countNextUpStackFromStack(stack);
   if (nextUpCount >= WIN_LOSE_STACK_PLAYERS) {
     return null;
@@ -465,13 +593,12 @@ export function getStackStartBlockReason(
     return (
       `Next-Up is the ${nextLabel} stack (${nextUpCount}/4). ` +
       `${otherCount} players are in the ${otherLabel} waiting pile — ` +
-      `complete games to move players into the ${nextLabel} stack, or refresh the Queue tab to rebalance piles.`
+      `complete games to move players into the ${nextLabel} stack, or switch to Manual mode to pick across both stacks.`
     );
   }
 
-  const totalCheckedIn = stack.winnerStack.length + stack.loserStack.length;
-  if (totalCheckedIn < WIN_LOSE_STACK_PLAYERS) {
-    return `Need at least ${WIN_LOSE_STACK_PLAYERS} checked-in players. Currently ${totalCheckedIn} in stacks — check in more on the Players tab.`;
+  if (totalWaiting < WIN_LOSE_STACK_PLAYERS) {
+    return `Need at least ${WIN_LOSE_STACK_PLAYERS} checked-in players. Currently ${totalWaiting} in stacks — check in more on the Players tab.`;
   }
 
   return `Need ${WIN_LOSE_STACK_PLAYERS} players in the ${nextLabel} stack (Next-Up). Currently ${nextUpCount}.`;
