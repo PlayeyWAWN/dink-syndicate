@@ -151,10 +151,19 @@ function reconcileAvailableSince(state: QueueState): void {
   reconcileAvailableSinceForQueue(state);
 }
 
+/**
+ * Keep a staged Next lineup after match complete/cancel when those players
+ * are still waiting. Only drop ids that left the stacks (or went on court).
+ */
 function refreshStackSelectionIfManual(state: QueueState): void {
   if (!isStackModeActive() || !isRotationPaused(state)) return;
-  // Manual mode starts empty — do not auto-fill the next lineup.
-  useQueueUiStore.getState().clearStackSelection();
+  const stack = ensureWinLoseStackState(state.winLoseStack);
+  const eligible = new Set(getAllWaitingStackIds(stack));
+  const ui = useQueueUiStore.getState();
+  const pruned = ui.stackSelectedPlayerIds.filter((id) => eligible.has(id));
+  if (pruned.length !== ui.stackSelectedPlayerIds.length) {
+    ui.setStackSelectedPlayerIds(pruned);
+  }
 }
 
 export const useQueueStore = create<QueueStoreState>((set, get) => {
@@ -646,7 +655,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
           ...(nextState.winLoseStack?.loserStack ?? []),
         ];
         syncStackPlayerAvailability({ unavailable: stackIds });
-        refreshStackSelectionIfManual(nextState);
+        useQueueUiStore.getState().clearStackSelection();
         return;
       }
 
@@ -663,7 +672,8 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       set({ queueState: nextState });
       persist(nextState);
       useQueueUiStore.getState().clearLadderStartNotices();
-      refreshStackSelectionIfManual(nextState);
+      // Entering manual mode — start with an empty Next lineup.
+      useQueueUiStore.getState().clearStackSelection();
     },
 
     resumeRotation: () => {
@@ -845,7 +855,6 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       if (newMode === 'win_lose_stack') {
         const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
         syncStackPlayerAvailability({ unavailable: checkedInIds });
-        refreshStackSelectionIfManual(withRotationFlag);
         return;
       }
 
