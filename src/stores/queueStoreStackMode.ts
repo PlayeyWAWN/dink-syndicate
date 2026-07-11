@@ -178,9 +178,13 @@ export function syncStackPlayerAvailability(options: {
 
 export function reconcileAvailableSinceForQueue(state: QueueState): void {
   const players = usePlayerStore.getState().players;
-  const availableIds = new Set(
-    queueService.getAvailablePlayers(players, state).map((player) => player.id)
-  );
+  /** Stack waiters are "busy" for open-play, but still need wait timers. */
+  const availableIds = isStackModeActive()
+    ? new Set([
+        ...(state.winLoseStack?.winnerStack ?? []),
+        ...(state.winLoseStack?.loserStack ?? []),
+      ])
+    : new Set(queueService.getAvailablePlayers(players, state).map((player) => player.id));
   const next = playerService.syncAvailableSince(players, availableIds);
   if (next.some((player, index) => player !== players[index])) {
     usePlayerStore.getState().replaceAll(next);

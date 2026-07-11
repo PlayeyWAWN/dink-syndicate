@@ -16,7 +16,7 @@ export const MATCHMAKING_FAIRNESS = {
   gamesPlayedWeight: 1000,
   lateMinutesWeight: 10,
   defaultGraceMinutes: 10,
-  defaultArrivalPenaltyEnabled: true,
+  defaultArrivalPenaltyEnabled: false,
   defaultAvailableWaitWarnMinutes: 10,
   defaultAvailableWaitCriticalMinutes: 15,
 } as const;

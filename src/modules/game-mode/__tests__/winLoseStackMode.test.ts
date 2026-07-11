@@ -1,6 +1,8 @@
 import {
+  buildAutoPreviewLineups,
   buildInitialStackDistribution,
   buildNextStackLineupPlayerIds,
+  computeStackLineupCount,
   getDefaultStackSelection,
   getStackStartBlockReason,
   isInitialStackLineup,
@@ -410,5 +412,28 @@ describe('winLoseStackMode', () => {
       },
     });
     expect(getStackStartBlockReason(state, 1, 0)).toMatch(/Next-Up is the Winners stack/);
+  });
+
+  it('computeStackLineupCount uses max(openCourts, floor(waiting/4)) with no hard cap', () => {
+    expect(computeStackLineupCount(5, 50)).toBe(12);
+    expect(computeStackLineupCount(2, 8)).toBe(2);
+    expect(computeStackLineupCount(0, 20)).toBe(5);
+    expect(computeStackLineupCount(3, 3)).toBe(3);
+    expect(computeStackLineupCount(0, 0)).toBe(1);
+  });
+
+  it('buildAutoPreviewLineups returns alternating Next-Up pulls', () => {
+    const stack = {
+      winnerStack: ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8'],
+      loserStack: ['l1', 'l2', 'l3', 'l4'],
+      nextUp: 'winners' as const,
+      lastPartnerByPlayer: {},
+    };
+    const lineups = buildAutoPreviewLineups(stack, 3);
+    expect(lineups).toHaveLength(3);
+    expect(lineups[0]).toHaveLength(4);
+    expect(lineups[0]).toEqual(expect.arrayContaining(['w1', 'w2', 'w3', 'w4']));
+    expect(lineups[1]).toEqual(expect.arrayContaining(['l1', 'l2', 'l3', 'l4']));
+    expect(lineups[2]).toEqual(expect.arrayContaining(['w5', 'w6', 'w7', 'w8']));
   });
 });

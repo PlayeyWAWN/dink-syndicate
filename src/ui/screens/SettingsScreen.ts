@@ -193,14 +193,35 @@ export function renderSettingsScreen(container: HTMLElement): void {
   }) as HTMLInputElement;
   weightField.append(weightInput);
 
-  const penaltyLabel = el('label', { className: 'players-sort__desc' });
-  const penaltyCheckbox = el('input', { type: 'checkbox' }) as HTMLInputElement;
+  const penaltyToggle = el('label', {
+    className: 'settings-switch',
+    for: 'arrival-penalty-enabled',
+  });
+  const penaltyCheckbox = el('input', {
+    id: 'arrival-penalty-enabled',
+    type: 'checkbox',
+    className: 'settings-switch__input',
+    role: 'switch',
+    'aria-checked': 'false',
+    'aria-label': 'Penalize late arrivals in Find Match',
+  }) as HTMLInputElement;
   penaltyCheckbox.checked =
     settings?.arrivalPenaltyEnabled ?? MATCHMAKING_FAIRNESS.defaultArrivalPenaltyEnabled;
-  penaltyLabel.append(penaltyCheckbox, ' Penalize late arrivals in Find Match');
+  penaltyCheckbox.setAttribute('aria-checked', penaltyCheckbox.checked ? 'true' : 'false');
+  const syncPenaltyAria = (): void => {
+    penaltyCheckbox.setAttribute('aria-checked', penaltyCheckbox.checked ? 'true' : 'false');
+  };
+  penaltyToggle.append(
+    penaltyCheckbox,
+    el('span', { className: 'settings-switch__track', 'aria-hidden': 'true' }, [
+      el('span', { className: 'settings-switch__thumb' }),
+    ]),
+    el('span', { className: 'settings-switch__label' }, ['Penalize late arrivals in Find Match'])
+  );
 
   const penaltyPreview = el('p', { className: 'screen-lead settings-preview' });
   const updatePreview = (): void => {
+    syncPenaltyAria();
     penaltyPreview.textContent = buildArrivalPreview(
       parseMinutesInput(graceInput.value, MATCHMAKING_FAIRNESS.defaultGraceMinutes, 120),
       parseMinutesInput(weightInput.value, MATCHMAKING_FAIRNESS.lateMinutesWeight, 100),
@@ -391,7 +412,7 @@ export function renderSettingsScreen(container: HTMLElement): void {
       arrivalPenaltyHeading,
       graceField,
       weightField,
-      penaltyLabel,
+      penaltyToggle,
       penaltyPreview,
       waitAlertsHeading,
       warnField,

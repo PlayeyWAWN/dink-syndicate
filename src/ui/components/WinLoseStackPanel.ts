@@ -1,20 +1,27 @@
 import { el } from '@/lib/dom-utils';
+import { formatMatchDuration } from '@/lib/match-timer';
 import { pickleballIconHtml } from '@/ui/icons/pickleball-icon';
+import { appRouter } from '@/app/router';
 import { useQueueStore } from '@/stores/queueStore';
 import { useCourtStore } from '@/stores/courtStore';
-import { useQueueUiStore } from '@/stores/queueUiStore';
 import { useSettingsUiStore } from '@/stores/settingsUiStore';
-import { appRouter } from '@/app/router';
-import { Player } from '@/types/player';
-import { isRotationPaused, QueueState } from '@/types/queue';
-import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
-import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 import {
+  buildAutoPreviewLineups,
+  computeStackLineupCount,
   getAllWaitingStackIds,
-  getNextUpStackIds,
   getStackStartBlockReason,
   WIN_LOSE_STACK_PLAYERS,
 } from '@/modules/game-mode/winLoseStackMode';
+import {
+  flattenStagedLineups,
+  getCompleteStagedLineups,
+  useQueueUiStore,
+} from '@/stores/queueUiStore';
+import { renderRotationControls } from '@/ui/components/RotationControlsPanel';
+import { openQueuePlayerEditDialog } from '@/ui/components/QueuePlayerEditDialog';
+import { Player } from '@/types/player';
+import { isRotationPaused, QueueState } from '@/types/queue';
+import { ensureWinLoseStackState } from '@/types/win-lose-stack';
 
 export interface WinLoseStackPanelOptions {
   queueState: QueueState;
@@ -38,24 +45,193 @@ function playerName(players: Player[], playerId: string): string {
   return players.find((player) => player.id === playerId)?.name ?? 'Unknown';
 }
 
-function pruneManualSelection(eligibleIds: string[]): string[] {
+function playerAvailableSince(players: Player[], playerId: string): number | undefined {
+  return players.find((player) => player.id === playerId)?.availableSince;
+}
+
+/** Live wait timer for stack waiters and lineup slots. */
+function renderWaitTimer(availableSince: number | undefined): HTMLElement | null {
+  if (availableSince == null) return null;
+  return el(
+    'span',
+    {
+      className: 'win-lose-stack__wait match-timer',
+      'data-available-since': String(availableSince),
+      title: 'Time waiting',
+    },
+    [formatMatchDuration(Date.now() - availableSince)]
+  );
+}
+
+function pruneManualSelection(eligibleIds: string[]): string[][] {
   const ui = useQueueUiStore.getState();
-  const valid = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
-  if (valid.length !== ui.stackSelectedPlayerIds.length) {
-    ui.setStackSelectedPlayerIds(valid);
+  ui.pruneStackStagedLineups(eligibleIds);
+  return useQueueUiStore.getState().stackStagedLineups;
+}
+
+function renderSingleLineupCard(
+  lineupIndex: number,
+  playerIds: string[],
+  players: Player[],
+  manualMode: boolean,
+  filledAt: number | undefined,
+  onEditPlayer: ((lineupIndex: number, playerId: string) => void) | null,
+  onClearLineup: (() => void) | null
+): HTMLElement {
+  const card = el('div', {
+    className: 'win-lose-stack__next-lineup',
+    role: 'region',
+    'aria-label': `Next lineup ${lineupIndex + 1}`,
+  });
+
+  const header = el('div', { className: 'win-lose-stack__next-lineup-header' });
+  header.append(
+    el('h3', { className: 'win-lose-stack__next-lineup-title' }, [
+      lineupIndex === 0 ? 'Next lineup' : `Lineup ${lineupIndex + 1}`,
+    ]),
+    el('span', { className: 'win-lose-stack__next-badge' }, [
+      `${playerIds.length}/${WIN_LOSE_STACK_PLAYERS} selected`,
+    ])
+  );
+
+  if (filledAt != null) {
+    header.append(
+      el(
+        'span',
+        {
+          className: 'win-lose-stack__lineup-ready-timer match-timer',
+          'data-lineup-filled-at': String(filledAt),
+          title: 'Time this lineup has been ready',
+        },
+        [formatMatchDuration(Date.now() - filledAt)]
+      )
+    );
   }
-  return valid;
+
+  if (manualMode && onClearLineup && playerIds.length > 0) {
+    const clearBtn = el('button', {
+      type: 'button',
+      className: 'win-lose-stack__lineup-clear',
+    }, ['Clear']) as HTMLButtonElement;
+    clearBtn.addEventListener('click', onClearLineup);
+    header.append(clearBtn);
+  }
+  card.append(header);
+
+  const slots = el('div', { className: 'win-lose-stack__lineup-slots' });
+  const team1 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+  team1.append(
+    el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--a' }, [
+      'Team 1',
+    ]),
+    renderLineupSlot(0, playerIds[0], players, lineupIndex, onEditPlayer),
+    renderLineupSlot(1, playerIds[1], players, lineupIndex, onEditPlayer)
+  );
+  const team2 = el('div', { className: 'win-lose-stack__lineup-team-group' });
+  team2.append(
+    el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--b' }, [
+      'Team 2',
+    ]),
+    renderLineupSlot(2, playerIds[2], players, lineupIndex, onEditPlayer),
+    renderLineupSlot(3, playerIds[3], players, lineupIndex, onEditPlayer)
+  );
+  slots.append(team1, el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']), team2);
+  card.append(slots);
+  return card;
+}
+
+/** One or more Next Lineup cards above the Winners/Losers columns. */
+function renderNextLineupSection(
+  stagedLineups: string[][],
+  lineupFilledAt: Array<number | undefined>,
+  players: Player[],
+  manualMode: boolean,
+  autoPreviewLineups: string[][],
+  onEditPlayer: (lineupIndex: number, playerId: string) => void,
+  onClearAll: () => void,
+  onClearLineup: (lineupIndex: number) => void
+): HTMLElement {
+  const section = el('div', {
+    className: 'win-lose-stack__next-lineups',
+    role: 'region',
+    'aria-label': 'Next lineups',
+  });
+
+  if (manualMode) {
+    const visible = stagedLineups.filter((lineup) => lineup.length > 0);
+    if (visible.length === 0) {
+      section.append(
+        el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+          'Tap waiting players below to build Next lineup. Each group of 4 becomes a lineup — keep tapping to add more lineups.',
+        ])
+      );
+      return section;
+    }
+
+    section.append(
+      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+        'Tap a player in a lineup to swap or replace them. Clear removes a lineup.',
+      ])
+    );
+    const clearAll = el('button', {
+      type: 'button',
+      className: 'win-lose-stack__lineup-clear win-lose-stack__lineup-clear--all',
+    }, ['Clear all lineups']) as HTMLButtonElement;
+    clearAll.addEventListener('click', onClearAll);
+    section.append(clearAll);
+
+    visible.forEach((lineup, index) => {
+      section.append(
+        renderSingleLineupCard(
+          index,
+          lineup,
+          players,
+          true,
+          lineupFilledAt[index],
+          onEditPlayer,
+          () => onClearLineup(index)
+        )
+      );
+    });
+    return section;
+  }
+
+  const previews = autoPreviewLineups.filter(
+    (lineup) => lineup.length >= WIN_LOSE_STACK_PLAYERS
+  );
+  if (previews.length === 0) {
+    section.append(
+      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+        `Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack before auto-rotation can start.`,
+      ])
+    );
+    return section;
+  }
+
+  section.append(
+    el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
+      'Auto-rotation preview — partners may shuffle when each game starts.',
+    ])
+  );
+  previews.forEach((lineup, index) => {
+    section.append(
+      renderSingleLineupCard(index, lineup, players, false, undefined, null, null)
+    );
+  });
+  return section;
 }
 
 function renderLineupSlot(
-  index: number,
+  slotIndex: number,
   playerId: string | undefined,
   players: Player[],
-  onClear: (playerId: string) => void
+  lineupIndex: number,
+  onEditPlayer: ((lineupIndex: number, playerId: string) => void) | null
 ): HTMLElement {
-  const isTeam1 = index < 2;
-  const slot = el('button', {
-    type: 'button',
+  const isTeam1 = slotIndex < 2;
+  const interactive = onEditPlayer != null && playerId != null;
+  const slot = el(interactive ? 'button' : 'div', {
+    type: interactive ? 'button' : undefined,
     className: [
       'win-lose-stack__lineup-slot',
       isTeam1 ? 'win-lose-stack__lineup-slot--team1' : 'win-lose-stack__lineup-slot--team2',
@@ -63,137 +239,38 @@ function renderLineupSlot(
     ]
       .filter(Boolean)
       .join(' '),
-    title: playerId ? `Remove ${playerName(players, playerId)}` : 'Empty slot — tap a waiting player',
+    title: playerId
+      ? interactive
+        ? `Edit ${playerName(players, playerId)} — swap or replace`
+        : playerName(players, playerId)
+      : 'Empty slot — tap a waiting player',
     'aria-label': playerId
-      ? `${LINEUP_SLOT_LABELS[index]}: ${playerName(players, playerId)}. Tap to remove.`
-      : `${LINEUP_SLOT_LABELS[index]}: empty`,
+      ? `${LINEUP_SLOT_LABELS[slotIndex]}: ${playerName(players, playerId)}${
+          interactive ? '. Tap to swap or replace.' : ''
+        }`
+      : `${LINEUP_SLOT_LABELS[slotIndex]}: empty`,
   });
 
   slot.append(
-    el('span', { className: 'win-lose-stack__lineup-slot-label' }, [LINEUP_SLOT_LABELS[index]!])
+    el('span', { className: 'win-lose-stack__lineup-slot-label' }, [LINEUP_SLOT_LABELS[slotIndex]!])
   );
 
   if (playerId) {
     slot.append(
       el('span', { className: 'win-lose-stack__lineup-slot-name' }, [playerName(players, playerId)])
     );
-    slot.addEventListener('click', () => onClear(playerId));
+    if (interactive) {
+      slot.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onEditPlayer(lineupIndex, playerId);
+      });
+    }
   } else {
     slot.append(el('span', { className: 'win-lose-stack__lineup-slot-name' }, ['Tap a player']));
   }
 
   return slot;
-}
-
-/** Standalone Next Lineup section above the Winners/Losers columns. */
-function renderNextLineupSection(
-  selectedPlayerIds: string[],
-  players: Player[],
-  manualMode: boolean,
-  autoPreviewIds: string[],
-  onClearPlayer: (playerId: string) => void,
-  onClearAll: () => void
-): HTMLElement {
-  const section = el('div', {
-    className: 'win-lose-stack__next-lineup',
-    role: 'region',
-    'aria-label': 'Next lineup',
-  });
-
-  const header = el('div', { className: 'win-lose-stack__next-lineup-header' });
-  header.append(el('h3', { className: 'win-lose-stack__next-lineup-title' }, ['Next lineup']));
-
-  if (manualMode) {
-    header.append(
-      el('span', { className: 'win-lose-stack__next-badge' }, [
-        `${selectedPlayerIds.length}/${WIN_LOSE_STACK_PLAYERS} selected`,
-      ])
-    );
-    if (selectedPlayerIds.length > 0) {
-      const clearBtn = el('button', {
-        type: 'button',
-        className: 'win-lose-stack__lineup-clear',
-      }, ['Clear']) as HTMLButtonElement;
-      clearBtn.addEventListener('click', onClearAll);
-      header.append(clearBtn);
-    }
-  } else {
-    header.append(
-      el('span', { className: 'win-lose-stack__next-badge' }, [
-        autoPreviewIds.length >= WIN_LOSE_STACK_PLAYERS
-          ? `Top ${WIN_LOSE_STACK_PLAYERS}`
-          : `${autoPreviewIds.length}/${WIN_LOSE_STACK_PLAYERS}`,
-      ])
-    );
-  }
-  section.append(header);
-
-  if (manualMode) {
-    section.append(
-      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
-        'Tap waiting players below to fill slots in order (Team 1, then Team 2). Tap a filled slot or name again to remove. With 4 selected, tapping another player replaces the last slot.',
-      ])
-    );
-
-    const slots = el('div', { className: 'win-lose-stack__lineup-slots' });
-    const team1 = el('div', { className: 'win-lose-stack__lineup-team-group' });
-    team1.append(
-      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--a' }, [
-        'Team 1',
-      ]),
-      renderLineupSlot(0, selectedPlayerIds[0], players, onClearPlayer),
-      renderLineupSlot(1, selectedPlayerIds[1], players, onClearPlayer)
-    );
-    const team2 = el('div', { className: 'win-lose-stack__lineup-team-group' });
-    team2.append(
-      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--b' }, [
-        'Team 2',
-      ]),
-      renderLineupSlot(2, selectedPlayerIds[2], players, onClearPlayer),
-      renderLineupSlot(3, selectedPlayerIds[3], players, onClearPlayer)
-    );
-    slots.append(team1, el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']), team2);
-    section.append(slots);
-  } else if (autoPreviewIds.length >= WIN_LOSE_STACK_PLAYERS) {
-    const slots = el('div', { className: 'win-lose-stack__lineup-slots' });
-    const team1 = el('div', { className: 'win-lose-stack__lineup-team-group' });
-    team1.append(
-      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--a' }, [
-        'Team 1',
-      ]),
-      el('div', { className: 'win-lose-stack__lineup-slot win-lose-stack__lineup-slot--team1 win-lose-stack__lineup-slot--filled' }, [
-        el('span', { className: 'win-lose-stack__lineup-slot-name' }, [
-          `${playerName(players, autoPreviewIds[0]!)} & ${playerName(players, autoPreviewIds[1]!)}`,
-        ]),
-      ])
-    );
-    const team2 = el('div', { className: 'win-lose-stack__lineup-team-group' });
-    team2.append(
-      el('span', { className: 'win-lose-stack__lineup-team-heading win-lose-stack__lineup-team-heading--b' }, [
-        'Team 2',
-      ]),
-      el('div', { className: 'win-lose-stack__lineup-slot win-lose-stack__lineup-slot--team2 win-lose-stack__lineup-slot--filled' }, [
-        el('span', { className: 'win-lose-stack__lineup-slot-name' }, [
-          `${playerName(players, autoPreviewIds[2]!)} & ${playerName(players, autoPreviewIds[3]!)}`,
-        ]),
-      ])
-    );
-    slots.append(team1, el('div', { className: 'win-lose-stack__lineup-vs' }, ['VS']), team2);
-    section.append(slots);
-    section.append(
-      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
-        'Auto-rotation will start these four when a court opens (partners may shuffle).',
-      ])
-    );
-  } else {
-    section.append(
-      el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
-        `Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack before auto-rotation can start.`,
-      ])
-    );
-  }
-
-  return section;
 }
 
 function renderReorderButton(
@@ -247,7 +324,7 @@ function renderStackColumn(
   if (selectable) {
     column.append(
       el('p', { className: 'win-lose-stack__due-hint' }, [
-        'Tap a name to add or remove them from Next lineup above.',
+        'Tap a name to move them into Next lineup above.',
       ])
     );
   } else if (isNextUp) {
@@ -283,6 +360,9 @@ function renderStackColumn(
         ]),
         el('span', { className: 'win-lose-stack__name' }, [name]),
       ];
+
+      const wait = renderWaitTimer(playerAvailableSince(players, playerId));
+      if (wait) itemChildren.push(wait);
 
       if (allowReorder && interaction) {
         const actions = el('div', { className: 'win-lose-stack__item-actions' }, [
@@ -323,7 +403,7 @@ function renderStackColumn(
   return column;
 }
 
-/** Win/Lose Stack rotation panel — next lineup, two stacks, and start control. */
+/** Win/Lose Stack rotation panel — next lineup(s), two stacks, and start control. */
 export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTMLElement {
   const { queueState, players, openCourtCount, activeMatchCount, onNavigate } = options;
   const stack = ensureWinLoseStackState(queueState.winLoseStack);
@@ -332,15 +412,54 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   const blockReason = getStackStartBlockReason(queueState, openCourtCount, activeMatchCount);
 
   const eligibleIds = getAllWaitingStackIds(stack);
-  const selectedPlayerIds = manualMode ? pruneManualSelection(eligibleIds) : [];
-  const autoPreviewIds = !manualMode ? getNextUpStackIds(stack).slice(0, WIN_LOSE_STACK_PLAYERS) : [];
-  const manualReady = selectedPlayerIds.length === WIN_LOSE_STACK_PLAYERS;
+  const lineupCount = computeStackLineupCount(openCourtCount, eligibleIds.length);
+  const stagedLineups = manualMode ? pruneManualSelection(eligibleIds) : [];
+  const lineupFilledAt = manualMode ? useQueueUiStore.getState().stackLineupFilledAt : [];
+  const selectedPlayerIds = flattenStagedLineups(stagedLineups);
+  const stagedSet = new Set(selectedPlayerIds);
+  const winnersVisible = stack.winnerStack.filter((id) => !stagedSet.has(id));
+  const losersVisible = stack.loserStack.filter((id) => !stagedSet.has(id));
+  const autoPreviewLineups = !manualMode ? buildAutoPreviewLineups(stack, lineupCount) : [];
+  const completeLineups = getCompleteStagedLineups(stagedLineups);
+  const manualReady = completeLineups.length > 0;
   const canStart = blockReason == null && (!manualMode || manualReady);
+  const gamesToStart = manualMode
+    ? Math.min(openCourtCount, completeLineups.length)
+    : Math.min(openCourtCount, autoPreviewLineups.length || 1);
+
+  const openLineupPlayerEditor = (lineupIndex: number, playerId: string): void => {
+    const lineupIds = useQueueUiStore.getState().stackStagedLineups[lineupIndex];
+    const player = players.find((item) => item.id === playerId);
+    if (!lineupIds || !player) return;
+
+    const stagedNow = new Set(flattenStagedLineups(useQueueUiStore.getState().stackStagedLineups));
+    const replacementPool = players.filter(
+      (item) =>
+        eligibleIds.includes(item.id) && !stagedNow.has(item.id) && item.id !== playerId
+    );
+
+    openQueuePlayerEditDialog({
+      lineup: { format: 'doubles', playerIds: lineupIds },
+      player,
+      players,
+      available: replacementPool,
+      replacementPool,
+      replaceHint: 'Choose a waiting stack player to replace them. Longest wait at top.',
+      onSwap: (otherPlayerId) => {
+        useQueueUiStore.getState().swapStagedLineupPlayers(lineupIndex, playerId, otherPlayerId);
+        onNavigate();
+      },
+      onReplace: (newPlayerId) => {
+        useQueueUiStore.getState().replaceStagedLineupPlayer(lineupIndex, playerId, newPlayerId);
+        onNavigate();
+      },
+    });
+  };
 
   const makeInteraction = (allowReorder: boolean): StackColumnInteraction => ({
     selectable: true,
     allowReorder,
-    selectedPlayerIds,
+    selectedPlayerIds: [],
     onToggleSelect: (playerId) => {
       useQueueUiStore.getState().toggleStackSelectedPlayer(playerId, eligibleIds);
       onNavigate();
@@ -363,11 +482,10 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
     useSettingsUiStore.getState().setAppInfoSectionOpen(true);
     appRouter.navigate('settings');
   });
+  const waitingVisibleCount = winnersVisible.length + losersVisible.length;
   headerRow.append(
     el('h2', { className: 'queue-section__title' }, ['Win/Lose Stacks']),
-    el('span', { className: 'queue-section__count' }, [
-      String(stack.winnerStack.length + stack.loserStack.length),
-    ]),
+    el('span', { className: 'queue-section__count' }, [String(waitingVisibleCount)]),
     helpLink
   );
   section.append(headerRow);
@@ -376,16 +494,18 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
 
   section.append(
     renderNextLineupSection(
-      selectedPlayerIds,
+      stagedLineups,
+      lineupFilledAt,
       players,
       manualMode,
-      autoPreviewIds,
-      (playerId) => {
-        useQueueUiStore.getState().toggleStackSelectedPlayer(playerId, eligibleIds);
-        onNavigate();
-      },
+      autoPreviewLineups,
+      openLineupPlayerEditor,
       () => {
         useQueueUiStore.getState().clearStackSelection();
+        onNavigate();
+      },
+      (lineupIndex) => {
+        useQueueUiStore.getState().removeStagedLineup(lineupIndex);
         onNavigate();
       }
     )
@@ -398,14 +518,14 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   stacksGrid.append(
     renderStackColumn(
       'Winners',
-      stack.winnerStack,
+      winnersVisible,
       players,
       winnersIsNext,
       manualMode ? makeInteraction(winnersIsNext) : undefined
     ),
     renderStackColumn(
       'Losers',
-      stack.loserStack,
+      losersVisible,
       players,
       losersIsNext,
       manualMode ? makeInteraction(losersIsNext) : undefined
@@ -413,20 +533,22 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   );
   section.append(stacksGrid);
 
+  const startLabel =
+    gamesToStart > 1 ? `Start ${gamesToStart} games` : 'Start next game';
   const startBtn = el('button', {
     type: 'button',
     className: 'btn btn-success btn-create-match win-lose-stack__start-btn',
     disabled: canStart ? undefined : 'true',
   }) as HTMLButtonElement;
-  startBtn.innerHTML = `${pickleballIconHtml()}<span>Start next game</span>`;
+  startBtn.innerHTML = `${pickleballIconHtml()}<span>${startLabel}</span>`;
 
   startBtn.addEventListener('click', () => {
     const courts = useCourtStore.getState().courts;
-    const openCourt = courts.find((court) => !court.activeMatchId);
     const liveState = useQueueStore.getState().queueState;
+    const openCourts = courts.filter((court) => !court.activeMatchId);
     const liveBlock = getStackStartBlockReason(
       liveState,
-      courts.filter((court) => !court.activeMatchId).length,
+      openCourts.length,
       liveState.activeMatches.length
     );
 
@@ -436,27 +558,50 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       return;
     }
 
-    if (!openCourt) {
+    if (openCourts.length === 0) {
       alert('All courts are occupied. Finish a match first.');
       onNavigate();
       return;
     }
 
-    if (isRotationPaused(liveState)) {
-      const selected = useQueueUiStore.getState().stackSelectedPlayerIds;
-      if (selected.length !== WIN_LOSE_STACK_PLAYERS) {
-        alert(`Pick exactly ${WIN_LOSE_STACK_PLAYERS} players in Next lineup before starting.`);
+    const manual = isRotationPaused(liveState);
+    if (manual) {
+      const complete = getCompleteStagedLineups(useQueueUiStore.getState().stackStagedLineups);
+      if (complete.length === 0) {
+        alert(`Fill at least one lineup with ${WIN_LOSE_STACK_PLAYERS} players before starting.`);
         onNavigate();
         return;
       }
+
+      let startedCount = 0;
+      const toStart = Math.min(openCourts.length, complete.length);
+      for (let i = 0; i < toStart; i++) {
+        const court = openCourts[i];
+        const lineup = complete[i];
+        if (!court || !lineup) break;
+        const started = useQueueStore.getState().tryStartWinLoseStackMatch(court.id, {
+          manual: true,
+          playerIds: lineup,
+        });
+        if (!started) break;
+        startedCount += 1;
+      }
+
+      if (startedCount === 0) {
+        alert(
+          `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in Next lineup and an open court.`
+        );
+      }
+      onNavigate();
+      return;
     }
 
-    const started = useQueueStore
-      .getState()
-      .tryStartWinLoseStackMatch(openCourt.id, { manual: isRotationPaused(liveState) });
+    const started = useQueueStore.getState().tryStartWinLoseStackMatch(openCourts[0]!.id, {
+      manual: false,
+    });
     if (!started) {
       alert(
-        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in Next lineup and an open court.`
+        `Could not start a game. Need ${WIN_LOSE_STACK_PLAYERS} players in the Next-Up stack and an open court.`
       );
     }
     onNavigate();
@@ -475,14 +620,23 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
       }, [blockReason])
     );
   } else if (manualMode && !manualReady) {
+    const firstIncomplete = stagedLineups.find((lineup) => lineup.length < WIN_LOSE_STACK_PLAYERS);
+    const statusText =
+      stagedLineups.length === 0
+        ? 'Tap players below to build Next lineup.'
+        : `Select ${WIN_LOSE_STACK_PLAYERS - (firstIncomplete?.length ?? 0)} more player${
+            WIN_LOSE_STACK_PLAYERS - (firstIncomplete?.length ?? 0) === 1 ? '' : 's'
+          } to complete the next lineup.`;
     stickyDock.append(
       el('p', {
         className: 'win-lose-stack__sticky-status',
         role: 'status',
-      }, [
-        `Select ${WIN_LOSE_STACK_PLAYERS - selectedPlayerIds.length} more player${
-          WIN_LOSE_STACK_PLAYERS - selectedPlayerIds.length === 1 ? '' : 's'
-        } in Next lineup.`,
+      }, [statusText])
+    );
+  } else if (manualMode && gamesToStart > 1) {
+    stickyDock.append(
+      el('p', { className: 'win-lose-stack__sticky-status', role: 'status' }, [
+        `${completeLineups.length} lineup${completeLineups.length === 1 ? '' : 's'} ready — will start ${gamesToStart} on open courts.`,
       ])
     );
   } else if (activeMatchCount > 0 && autoRotationOn) {

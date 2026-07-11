@@ -44,7 +44,7 @@ export function clearLiveTimers(root: HTMLElement): void {
   }
 }
 
-/** Tick `[data-started-at]`, `[data-queued-at]`, and `[data-available-since]` elements under root. */
+/** Tick `[data-started-at]`, `[data-queued-at]`, `[data-lineup-filled-at]`, and `[data-available-since]` elements under root. */
 export function mountLiveTimers(root: HTMLElement, options?: LiveTimerOptions): void {
   clearLiveTimers(root);
 
@@ -67,6 +67,12 @@ export function mountLiveTimers(root: HTMLElement, options?: LiveTimerOptions): 
         node.textContent = formatQueueWaitDuration(now - queued);
       }
     });
+    root.querySelectorAll('[data-lineup-filled-at]').forEach((node) => {
+      const filled = Number(node.getAttribute('data-lineup-filled-at'));
+      if (Number.isFinite(filled)) {
+        node.textContent = formatMatchDuration(now - filled);
+      }
+    });
     root.querySelectorAll('[data-available-since]').forEach((node) => {
       const since = Number(node.getAttribute('data-available-since'));
       if (!Number.isFinite(since)) return;
@@ -74,19 +80,44 @@ export function mountLiveTimers(root: HTMLElement, options?: LiveTimerOptions): 
       const elapsed = now - since;
       node.textContent = formatMatchDuration(elapsed);
 
-      const card = node.closest('.available-player-card');
+      const card =
+        node.closest('.available-player-card') ??
+        node.closest('.win-lose-stack__item') ??
+        node.closest('.win-lose-stack__lineup-slot');
       if (!card) return;
 
       card.classList.remove(
         'available-player-card--waiting-warn',
-        'available-player-card--waiting-critical'
+        'available-player-card--waiting-critical',
+        'win-lose-stack__item--waiting-warn',
+        'win-lose-stack__item--waiting-critical',
+        'win-lose-stack__lineup-slot--waiting-warn',
+        'win-lose-stack__lineup-slot--waiting-critical'
       );
-      if (card.classList.contains('available-player-card--selected')) return;
+      if (
+        card.classList.contains('available-player-card--selected') ||
+        card.classList.contains('win-lose-stack__item--selected')
+      ) {
+        return;
+      }
+
+      const isAvailableCard = card.classList.contains('available-player-card');
+      const isStackItem = card.classList.contains('win-lose-stack__item');
+      const warnClass = isAvailableCard
+        ? 'available-player-card--waiting-warn'
+        : isStackItem
+          ? 'win-lose-stack__item--waiting-warn'
+          : 'win-lose-stack__lineup-slot--waiting-warn';
+      const criticalClass = isAvailableCard
+        ? 'available-player-card--waiting-critical'
+        : isStackItem
+          ? 'win-lose-stack__item--waiting-critical'
+          : 'win-lose-stack__lineup-slot--waiting-critical';
 
       if (elapsed >= criticalMs) {
-        card.classList.add('available-player-card--waiting-critical');
+        card.classList.add(criticalClass);
       } else if (elapsed >= warnMs) {
-        card.classList.add('available-player-card--waiting-warn');
+        card.classList.add(warnClass);
       }
     });
 

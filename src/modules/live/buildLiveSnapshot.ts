@@ -1,6 +1,12 @@
 import { queueEntryLabel, splitTeams } from '@/lib/format-utils';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
-import { buildNextStackLineupPlayerIds } from '@/modules/game-mode/winLoseStackMode';
+import {
+  buildAutoPreviewLineups,
+  buildNextStackLineupPlayerIds,
+  computeStackLineupCount,
+  getAllWaitingStackIds,
+  WIN_LOSE_STACK_PLAYERS,
+} from '@/modules/game-mode/winLoseStackMode';
 import { isRotationPaused } from '@/types/queue';
 import { computeRankingDeltas } from '@/modules/live/ranking-deltas';
 import { computeRankingPoints, comparePlayersForRanking } from '@/modules/stats/ranking-utils';
@@ -16,6 +22,13 @@ import {
 import { Player } from '@/types/player';
 import { Match, QueueState } from '@/types/queue';
 import { AppSettings } from '@/types/app-data';
+
+function getCompleteLineups(lineups: string[][]): string[][] {
+  return lineups.filter(
+    (lineup) =>
+      lineup.length === WIN_LOSE_STACK_PLAYERS && new Set(lineup).size === WIN_LOSE_STACK_PLAYERS
+  );
+}
 
 function toPublicPlayer(player: Player): PublicPlayer {
   return {
@@ -71,39 +84,54 @@ function buildQueueNext(
   queueState: QueueState,
   players: Player[],
   gameMode: GameMode,
-  stackSelectedPlayerIds: string[] = []
+  options: {
+    stackStagedLineups?: string[][];
+    openCourtCount?: number;
+  } = {}
 ): PublicQueueEntry[] {
   if (gameMode === 'win_lose_stack' && queueState.winLoseStack) {
     const stack = queueState.winLoseStack;
     const crossStack = isRotationPaused(queueState);
-    // Cap selection so a stale UI selection cannot publish winners+losers as 4v4.
-    const selection = stackSelectedPlayerIds.slice(0, 4);
-    const playerIds = buildNextStackLineupPlayerIds(stack, selection, {
-      crossStack,
-    });
-    if (!playerIds || playerIds.length !== 4) return [];
+    const waitingCount = getAllWaitingStackIds(stack).length;
+    const lineupCount = computeStackLineupCount(options.openCourtCount ?? 1, waitingCount);
 
-    const stackLabel = crossStack
-      ? 'Next game'
-      : stack.nextUp === 'winners'
-        ? 'Winners stack'
-        : 'Losers stack';
-    const { teamA, teamB } = splitTeams(playerIds);
-    const namesA = teamA
-      .map((id) => players.find((p) => p.id === id)?.name ?? '?')
-      .join(' & ');
-    const namesB = teamB
-      .map((id) => players.find((p) => p.id === id)?.name ?? '?')
-      .join(' & ');
+    let lineups: string[][] = [];
+    if (crossStack) {
+      lineups = getCompleteLineups(options.stackStagedLineups ?? []).slice(0, lineupCount);
+    } else {
+      lineups = buildAutoPreviewLineups(stack, lineupCount);
+    }
 
-    return [
-      {
-        position: 1,
+    // Fallback: single legacy selection path if nothing staged yet.
+    if (lineups.length === 0 && crossStack) {
+      const flat = (options.stackStagedLineups ?? []).flat().slice(0, WIN_LOSE_STACK_PLAYERS);
+      const playerIds = buildNextStackLineupPlayerIds(stack, flat, { crossStack: true });
+      if (playerIds) lineups = [playerIds];
+    }
+
+    return lineups.map((playerIds, index) => {
+      const stackLabel = crossStack
+        ? lineups.length > 1
+          ? `Lineup ${index + 1}`
+          : 'Next game'
+        : stack.nextUp === 'winners'
+          ? 'Winners stack'
+          : 'Losers stack';
+      const { teamA, teamB } = splitTeams(playerIds);
+      const namesA = teamA
+        .map((id) => players.find((p) => p.id === id)?.name ?? '?')
+        .join(' & ');
+      const namesB = teamB
+        .map((id) => players.find((p) => p.id === id)?.name ?? '?')
+        .join(' & ');
+
+      return {
+        position: index + 1,
         playerIds,
         label: `${stackLabel}: ${namesA} vs ${namesB}`,
-        format: 'doubles',
-      },
-    ];
+        format: 'doubles' as const,
+      };
+    });
   }
 
   if (gameMode === 'ladder_waterfall' && queueState.ladderWaterfall) {
@@ -135,7 +163,9 @@ export interface BuildLiveSnapshotInput {
   players: Player[];
   previousRankings?: PublicRankingRow[];
   viewerStats: LiveSessionSnapshot['viewerStats'];
-  /** Manual win/lose stack selection when auto-rotation is paused. */
+  /** Manual win/lose stack staged lineups when auto-rotation is paused. */
+  stackStagedLineups?: string[][];
+  /** @deprecated Prefer stackStagedLineups. */
   stackSelectedPlayerIds?: string[];
 }
 
@@ -161,12 +191,12 @@ export function buildLiveSnapshot(input: BuildLiveSnapshotInput): LiveSessionSna
     activeMatches: input.queueState.activeMatches.map((m) =>
       toPublicMatch(m, input.courts, 'active')
     ),
-    queueNext: buildQueueNext(
-      input.queueState,
-      input.players,
-      gameMode,
-      input.stackSelectedPlayerIds ?? []
-    ),
+    queueNext: buildQueueNext(input.queueState, input.players, gameMode, {
+      stackStagedLineups:
+        input.stackStagedLineups ??
+        (input.stackSelectedPlayerIds ? [input.stackSelectedPlayerIds] : undefined),
+      openCourtCount: input.courts.filter((court) => !court.activeMatchId).length,
+    }),
     completedMatches: input.queueState.completedMatches.map((m) =>
       toPublicMatch(m, input.courts, 'completed')
     ),

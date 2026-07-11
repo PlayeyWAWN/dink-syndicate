@@ -256,8 +256,8 @@ export const livePublishService = {
     const viewerStats = existingData?.viewerStats ?? defaultViewerStats();
 
     const queueState = useQueueStore.getState().queueState;
-    const stackSelectedPlayerIds = isRotationPaused(queueState)
-      ? useQueueUiStore.getState().stackSelectedPlayerIds.slice(0, 4)
+    const stackStagedLineups = isRotationPaused(queueState)
+      ? useQueueUiStore.getState().stackStagedLineups
       : undefined;
 
     const snapshot = buildLiveSnapshot({
@@ -271,7 +271,7 @@ export const livePublishService = {
       players: usePlayerStore.getState().players,
       previousRankings: previousRankings ?? existingData?.rankings,
       viewerStats,
-      stackSelectedPlayerIds,
+      stackStagedLineups,
     });
 
     previousRankings = snapshot.rankings;

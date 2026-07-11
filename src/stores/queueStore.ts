@@ -18,7 +18,7 @@ import { usePlayerStore } from '@/stores/playerStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { toSessionSettings } from '@/types/app-data';
 import { useCourtStore } from '@/stores/courtStore';
-import { useQueueUiStore } from '@/stores/queueUiStore';
+import { useQueueUiStore, getCompleteStagedLineups } from '@/stores/queueUiStore';
 import { CourtFormat, QueueMatchMode } from '@/config/queue-match-modes';
 import { QueueState, QueueEntry, isRotationPaused } from '@/types/queue';
 import { Player, isPlayerMatchable } from '@/types/player';
@@ -96,7 +96,10 @@ interface QueueStoreState {
   ) => { ok: true } | { ok: false; message: string };
   clearSessionQueue: () => void;
   prepareQueueForNewSession: () => void;
-  tryStartWinLoseStackMatch: (preferredCourtId?: string, options?: { manual?: boolean }) => boolean;
+  tryStartWinLoseStackMatch: (
+    preferredCourtId?: string,
+    options?: { manual?: boolean; playerIds?: string[] }
+  ) => boolean;
   onPlayerCheckedInForStackMode: (playerId: string) => void;
   onPlayerRemovedFromStackMode: (playerId: string) => void;
   reorderStackPlayer: (playerId: string, direction: 'up' | 'down') => boolean;
@@ -158,12 +161,8 @@ function reconcileAvailableSince(state: QueueState): void {
 function refreshStackSelectionIfManual(state: QueueState): void {
   if (!isStackModeActive() || !isRotationPaused(state)) return;
   const stack = ensureWinLoseStackState(state.winLoseStack);
-  const eligible = new Set(getAllWaitingStackIds(stack));
-  const ui = useQueueUiStore.getState();
-  const pruned = ui.stackSelectedPlayerIds.filter((id) => eligible.has(id));
-  if (pruned.length !== ui.stackSelectedPlayerIds.length) {
-    ui.setStackSelectedPlayerIds(pruned);
-  }
+  const eligible = getAllWaitingStackIds(stack);
+  useQueueUiStore.getState().pruneStackStagedLineups(eligible);
 }
 
 export const useQueueStore = create<QueueStoreState>((set, get) => {
@@ -357,7 +356,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
           useCourtStore.getState().clearCourt(match.courtId);
         }
         persist(nextState);
-        syncPlayerAvailability({ unavailable: match.playerIds });
+        syncStackPlayerAvailability({ available: match.playerIds });
         if (isRotationPaused(nextState)) {
           refreshStackSelectionIfManual(nextState);
         }
@@ -549,6 +548,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
         }
 
         persist(routedState);
+        syncStackPlayerAvailability({ available: match.playerIds });
 
         if (isRotationPaused(routedState)) {
           refreshStackSelectionIfManual(routedState);
@@ -654,7 +654,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
           ...(nextState.winLoseStack?.winnerStack ?? []),
           ...(nextState.winLoseStack?.loserStack ?? []),
         ];
-        syncStackPlayerAvailability({ unavailable: stackIds });
+        syncStackPlayerAvailability({ available: stackIds });
         useQueueUiStore.getState().clearStackSelection();
         return;
       }
@@ -696,14 +696,13 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       if (!manual && isRotationPaused(get().queueState)) return false;
 
       const queueState = get().queueState;
-      let playerIds: string[] | undefined;
-      if (manual && queueState.winLoseStack) {
+      let playerIds: string[] | undefined = options?.playerIds;
+      if (manual && playerIds == null && queueState.winLoseStack) {
         const stack = ensureWinLoseStackState(queueState.winLoseStack);
-        const resolved = resolveStackStartPlayerIds(
-          stack,
-          useQueueUiStore.getState().stackSelectedPlayerIds,
-          { crossStack: true }
-        );
+        const complete = getCompleteStagedLineups(useQueueUiStore.getState().stackStagedLineups);
+        const first = complete[0];
+        if (!first) return false;
+        const resolved = resolveStackStartPlayerIds(stack, first, { crossStack: true });
         if (!resolved) return false;
         playerIds = resolved;
       }
@@ -718,7 +717,11 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       set({ queueState: state });
       persist(state);
       syncStackPlayerAvailability({ unavailable: match.playerIds });
-      useQueueUiStore.getState().clearStackSelection();
+      if (manual) {
+        useQueueUiStore.getState().drainCompleteStagedLineups(1);
+      } else {
+        useQueueUiStore.getState().clearStackSelection();
+      }
       refreshStackSelectionIfManual(state);
       return true;
     },
@@ -729,7 +732,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       const nextState = seedPlayerForStackMode(get().queueState, playerId);
       set({ queueState: nextState });
       persist(nextState);
-      syncStackPlayerAvailability({ unavailable: [playerId] });
+      // Check-in already stamps availableSince; keep the wait timer running on the stack.
     },
 
     onPlayerRemovedFromStackMode: (playerId) => {
@@ -741,13 +744,9 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
       set({ queueState: nextState });
       persist(nextState);
       if (isRotationPaused(nextState)) {
-        const ui = useQueueUiStore.getState();
         const stack = ensureWinLoseStackState(nextState.winLoseStack);
         const eligibleIds = getAllWaitingStackIds(stack);
-        const pruned = ui.stackSelectedPlayerIds.filter((id) => eligibleIds.includes(id));
-        if (pruned.length !== ui.stackSelectedPlayerIds.length) {
-          ui.setStackSelectedPlayerIds(pruned);
-        }
+        useQueueUiStore.getState().pruneStackStagedLineups(eligibleIds);
       }
     },
 
@@ -854,7 +853,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
 
       if (newMode === 'win_lose_stack') {
         const checkedInIds = players.filter(isPlayerMatchable).map((player) => player.id);
-        syncStackPlayerAvailability({ unavailable: checkedInIds });
+        syncStackPlayerAvailability({ available: checkedInIds });
         return;
       }
 
@@ -878,11 +877,7 @@ export const useQueueStore = create<QueueStoreState>((set, get) => {
 
       set({ queueState: reconciled });
       persist(reconciled);
-      const stackIds = [
-        ...(reconciled.winLoseStack?.winnerStack ?? []),
-        ...(reconciled.winLoseStack?.loserStack ?? []),
-      ];
-      syncStackPlayerAvailability({ unavailable: stackIds });
+      reconcileAvailableSince(reconciled);
     },
 
     reconcileLadderState: () => {

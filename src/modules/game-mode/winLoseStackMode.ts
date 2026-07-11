@@ -15,6 +15,48 @@ import {
 
 export const WIN_LOSE_STACK_PLAYERS = 4;
 
+/**
+ * How many auto-preview Next Lineup cards to show.
+ * max(openCourts, floor(waiting/4)), always at least 1 — no hard upper cap.
+ */
+export function computeStackLineupCount(openCourtCount: number, waitingPlayerCount: number): number {
+  const fromCourts = Math.max(0, openCourtCount);
+  const fromWaiting = Math.floor(Math.max(0, waitingPlayerCount) / WIN_LOSE_STACK_PLAYERS);
+  return Math.max(1, Math.max(fromCourts, fromWaiting));
+}
+
+/**
+ * Auto-rotation preview: simulate Next-Up pulls for up to `lineupCount` games
+ * without mutating stack state.
+ */
+export function buildAutoPreviewLineups(
+  stack: WinLoseStackState,
+  lineupCount: number
+): string[][] {
+  let winners = [...stack.winnerStack];
+  let losers = [...stack.loserStack];
+  let nextUp: 'winners' | 'losers' = stack.nextUp;
+  const lineups: string[][] = [];
+  const count = Math.max(0, Math.floor(lineupCount));
+
+  for (let i = 0; i < count; i++) {
+    const due = nextUp === 'winners' ? winners : losers;
+    if (due.length < WIN_LOSE_STACK_PLAYERS) break;
+    const pulled = due.slice(0, WIN_LOSE_STACK_PLAYERS);
+    const paired = partnerSplitPairing(pulled, stack.lastPartnerByPlayer).playerIds;
+    if (paired.length !== WIN_LOSE_STACK_PLAYERS) break;
+    lineups.push(paired);
+    if (nextUp === 'winners') {
+      winners = winners.slice(WIN_LOSE_STACK_PLAYERS);
+    } else {
+      losers = losers.slice(WIN_LOSE_STACK_PLAYERS);
+    }
+    nextUp = nextUp === 'winners' ? 'losers' : 'winners';
+  }
+
+  return lineups;
+}
+
 export function getWinLoseStackPlayerIds(state: QueueState): Set<string> {
   const stack = state.winLoseStack;
   if (!stack) return new Set();

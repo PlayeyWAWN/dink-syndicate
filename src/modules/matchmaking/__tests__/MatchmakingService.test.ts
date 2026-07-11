@@ -256,7 +256,11 @@ describe('MatchmakingService', () => {
   });
 
   it('deprioritizes late check-ins over on-time players with equal games (singles)', () => {
-    const sessionSettings = { sessionStartTime: sessionStart, arrivalGraceMinutes: 10 };
+    const sessionSettings = {
+      sessionStartTime: sessionStart,
+      arrivalGraceMinutes: 10,
+      arrivalPenaltyEnabled: true,
+    };
     const onTime = withCheckIn(
       withSinglesRating(createPlayer({ id: 'on', name: 'On Time' }), 3.5),
       sessionStart
@@ -280,6 +284,21 @@ describe('MatchmakingService', () => {
 
     expect(entry?.playerIds).toEqual(expect.arrayContaining(['on', 'partner']));
     expect(entry?.playerIds).not.toContain('late');
+  });
+
+  it('does not apply late minutes when arrival penalty is disabled', () => {
+    const context = ranker.createContext({
+      sessionStartTime: sessionStart,
+      arrivalGraceMinutes: 10,
+      arrivalPenaltyEnabled: false,
+    });
+    const late = withCheckIn(
+      withSinglesRating(createPlayer({ id: 'late', name: 'Late' }), 3.0),
+      sessionStart + 30 * 60 * 1000
+    );
+
+    expect(ranker.lateMinutes(late, context)).toBe(0);
+    expect(ranker.fairnessSortScore(late, context, true)).toBe(3.0);
   });
 
   it('builds a balanced quartet from six players without pairing extreme DUPR outliers', () => {

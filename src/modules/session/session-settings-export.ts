@@ -1,3 +1,4 @@
+import { MATCHMAKING_FAIRNESS } from '@/config/matchmaking';
 import { COURT_FORMATS, QUEUE_MATCH_MODES } from '@/config/queue-match-modes';
 import { getGameMode } from '@/modules/game-mode/getGameMode';
 import { AppSettings } from '@/types/app-data';
@@ -57,7 +58,8 @@ export function buildSessionSettingsSummary(
     courtFormatId,
     matchMode: labelForMatchMode(matchModeId),
     matchModeId,
-    penalizeLateArrivalsInFindMatch: settings.arrivalPenaltyEnabled ?? true,
+    penalizeLateArrivalsInFindMatch:
+      settings.arrivalPenaltyEnabled ?? MATCHMAKING_FAIRNESS.defaultArrivalPenaltyEnabled,
     sessionStartTime:
       settings.sessionStartTime != null ? new Date(settings.sessionStartTime).toISOString() : null,
     arrivalGraceMinutes: settings.arrivalGraceMinutes ?? 10,
