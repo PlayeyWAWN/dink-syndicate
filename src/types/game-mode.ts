@@ -17,7 +17,7 @@ export const GAME_MODE_OPTIONS: GameModeOption[] = [
     id: 'win_lose_stack',
     label: 'Win/Lose Stack',
     shortDescription:
-      'Double-queue rotation: winners and losers wait in separate stacks; Next-Up alternates between stacks with partner shuffle.',
+      'Double-queue rotation: winners and losers wait in separate stacks; Next-Up alternates between stacks with final pairings shown upfront.',
   },
   {
     id: 'ladder_waterfall',

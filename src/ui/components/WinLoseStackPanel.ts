@@ -210,12 +210,20 @@ function renderNextLineupSection(
 
   section.append(
     el('p', { className: 'win-lose-stack__next-lineup-hint' }, [
-      'Auto-rotation preview — partners may shuffle when each game starts.',
+      'Upcoming games — pairings shown are final (prior partners split when possible).',
     ])
   );
   previews.forEach((lineup, index) => {
     section.append(
-      renderSingleLineupCard(index, lineup, players, false, undefined, null, null)
+      renderSingleLineupCard(
+        index,
+        lineup,
+        players,
+        false,
+        lineupFilledAt[index],
+        null,
+        null
+      )
     );
   });
   return section;
@@ -414,12 +422,17 @@ export function renderWinLoseStackPanel(options: WinLoseStackPanelOptions): HTML
   const eligibleIds = getAllWaitingStackIds(stack);
   const lineupCount = computeStackLineupCount(openCourtCount, eligibleIds.length);
   const stagedLineups = manualMode ? pruneManualSelection(eligibleIds) : [];
-  const lineupFilledAt = manualMode ? useQueueUiStore.getState().stackLineupFilledAt : [];
+  const autoPreviewLineups = !manualMode ? buildAutoPreviewLineups(stack, lineupCount) : [];
+  if (!manualMode) {
+    useQueueUiStore.getState().syncStackAutoPreviewFilledAt(autoPreviewLineups);
+  }
+  const lineupFilledAt = manualMode
+    ? useQueueUiStore.getState().stackLineupFilledAt
+    : useQueueUiStore.getState().stackAutoPreviewFilledAt;
   const selectedPlayerIds = flattenStagedLineups(stagedLineups);
   const stagedSet = new Set(selectedPlayerIds);
   const winnersVisible = stack.winnerStack.filter((id) => !stagedSet.has(id));
   const losersVisible = stack.loserStack.filter((id) => !stagedSet.has(id));
-  const autoPreviewLineups = !manualMode ? buildAutoPreviewLineups(stack, lineupCount) : [];
   const completeLineups = getCompleteStagedLineups(stagedLineups);
   const manualReady = completeLineups.length > 0;
   const canStart = blockReason == null && (!manualMode || manualReady);

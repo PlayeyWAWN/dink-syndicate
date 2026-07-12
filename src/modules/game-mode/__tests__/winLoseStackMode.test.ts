@@ -436,4 +436,52 @@ describe('winLoseStackMode', () => {
     expect(lineups[1]).toEqual(expect.arrayContaining(['l1', 'l2', 'l3', 'l4']));
     expect(lineups[2]).toEqual(expect.arrayContaining(['w5', 'w6', 'w7', 'w8']));
   });
+
+  it('buildAutoPreviewLineups matches startNextStackMatch partner-split pairing', () => {
+    const stack = {
+      winnerStack: ['p1', 'p2', 'p3', 'p4'],
+      loserStack: ['l1', 'l2', 'l3', 'l4'],
+      nextUp: 'winners' as const,
+      lastPartnerByPlayer: {
+        p1: 'p2',
+        p2: 'p1',
+        p3: 'p4',
+        p4: 'p3',
+      },
+    };
+    const preview = buildAutoPreviewLineups(stack, 1);
+    const { match } = startNextStackMatch(baseState({ winLoseStack: stack }), 'court-1');
+
+    expect(match).not.toBeNull();
+    expect(preview[0]).toEqual(match!.playerIds);
+    // Front-of-stack order would keep prior partners together; split must rearrange.
+    expect(preview[0]!.slice(0, 2).sort().join(',')).not.toBe('p1,p2');
+  });
+
+  it('buildAutoPreviewLineups multi-card pairings match sequential starts', () => {
+    const stack = {
+      winnerStack: ['w1', 'w2', 'w3', 'w4'],
+      loserStack: ['l1', 'l2', 'l3', 'l4'],
+      nextUp: 'winners' as const,
+      lastPartnerByPlayer: {
+        w1: 'w2',
+        w2: 'w1',
+        w3: 'w4',
+        w4: 'w3',
+        l1: 'l2',
+        l2: 'l1',
+        l3: 'l4',
+        l4: 'l3',
+      },
+    };
+    const preview = buildAutoPreviewLineups(stack, 2);
+
+    const first = startNextStackMatch(baseState({ winLoseStack: stack }), 'court-1');
+    expect(first.match).not.toBeNull();
+    expect(preview[0]).toEqual(first.match!.playerIds);
+
+    const second = startNextStackMatch(first.state, 'court-2');
+    expect(second.match).not.toBeNull();
+    expect(preview[1]).toEqual(second.match!.playerIds);
+  });
 });

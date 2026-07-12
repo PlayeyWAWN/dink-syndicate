@@ -36,6 +36,12 @@ interface QueueUiState {
    * cleared if the lineup drops below 4.
    */
   stackLineupFilledAt: Array<number | undefined>;
+  /**
+   * Auto-rotation preview ready stamps — keyed by ordered playerIds so timers
+   * survive when Lineup 2 becomes Next after a start.
+   */
+  stackAutoPreviewKeys: string[];
+  stackAutoPreviewFilledAt: Array<number | undefined>;
   /** Filled slot awaiting a waiting-player tap to swap. */
   stackSwapTarget: StackSwapTarget | null;
   setCourtFormat: (format: CourtFormat) => void;
@@ -75,6 +81,8 @@ interface QueueUiState {
   pruneStackStagedLineups: (eligibleIds: string[]) => void;
   drainCompleteStagedLineups: (count: number) => void;
   syncStackDefaultSelection: (eligibleIds?: string[]) => void;
+  /** Stamp/keep ready timers for auto-rotation Next Lineup cards. */
+  syncStackAutoPreviewFilledAt: (lineups: string[][], now?: number) => void;
   hydrateFromSettings: (settings?: AppSettings) => void;
 }
 
@@ -115,6 +123,43 @@ export function syncLineupFilledAt(
   });
 }
 
+/** Ordered composition key so partner-split team order is part of the stamp. */
+export function lineupCompositionKey(lineup: string[]): string {
+  return lineup.join('|');
+}
+
+/**
+ * Ready timers for auto preview cards: keep stamp when the same composition
+ * is still present (including index shifts); stamp now for new compositions.
+ */
+export function syncAutoPreviewFilledAt(
+  lineups: string[][],
+  previousKeys: string[],
+  previousFilledAt: Array<number | undefined>,
+  now = Date.now()
+): { keys: string[]; filledAt: Array<number | undefined> } {
+  const keys: string[] = [];
+  const filledAt: Array<number | undefined> = [];
+
+  for (const lineup of lineups) {
+    if (!isCompleteLineup(lineup)) {
+      keys.push('');
+      filledAt.push(undefined);
+      continue;
+    }
+    const key = lineupCompositionKey(lineup);
+    keys.push(key);
+    const priorIdx = previousKeys.indexOf(key);
+    if (priorIdx >= 0 && previousFilledAt[priorIdx] != null) {
+      filledAt.push(previousFilledAt[priorIdx]);
+    } else {
+      filledAt.push(now);
+    }
+  }
+
+  return { keys, filledAt };
+}
+
 function withLineups(
   lineups: string[][],
   previousFilledAt: Array<number | undefined>,
@@ -141,6 +186,8 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   ladderSelectedPoolPlayerId: null,
   stackStagedLineups: [],
   stackLineupFilledAt: [],
+  stackAutoPreviewKeys: [],
+  stackAutoPreviewFilledAt: [],
   stackSwapTarget: null,
   setCourtFormat: (courtFormat) => {
     set({ courtFormat, selectedPlayerIds: [] });
@@ -270,7 +317,13 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
     set(withLineups([first, ...rest], [undefined, ...restFilled], null));
   },
   clearStackSelection: () =>
-    set({ stackStagedLineups: [], stackLineupFilledAt: [], stackSwapTarget: null }),
+    set({
+      stackStagedLineups: [],
+      stackLineupFilledAt: [],
+      stackAutoPreviewKeys: [],
+      stackAutoPreviewFilledAt: [],
+      stackSwapTarget: null,
+    }),
   pruneStackStagedLineups: (eligibleIds) => {
     const eligible = new Set(eligibleIds);
     const { stackStagedLineups, stackLineupFilledAt } = get();
@@ -311,7 +364,26 @@ export const useQueueUiStore = create<QueueUiState>((set, get) => ({
   },
   /** Kept for callers that still sync; manual mode no longer auto-fills. */
   syncStackDefaultSelection: (_eligibleIds?: string[]) =>
-    set({ stackStagedLineups: [], stackLineupFilledAt: [], stackSwapTarget: null }),
+    set({
+      stackStagedLineups: [],
+      stackLineupFilledAt: [],
+      stackAutoPreviewKeys: [],
+      stackAutoPreviewFilledAt: [],
+      stackSwapTarget: null,
+    }),
+  syncStackAutoPreviewFilledAt: (lineups, now = Date.now()) => {
+    const { stackAutoPreviewKeys, stackAutoPreviewFilledAt } = get();
+    const synced = syncAutoPreviewFilledAt(
+      lineups,
+      stackAutoPreviewKeys,
+      stackAutoPreviewFilledAt,
+      now
+    );
+    set({
+      stackAutoPreviewKeys: synced.keys,
+      stackAutoPreviewFilledAt: synced.filledAt,
+    });
+  },
   hydrateFromSettings: (settings) => {
     const courtFormat: CourtFormat =
       settings?.courtFormat === 'singles' ? 'singles' : 'doubles';

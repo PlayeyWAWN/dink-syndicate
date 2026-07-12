@@ -27,7 +27,8 @@ export function computeStackLineupCount(openCourtCount: number, waitingPlayerCou
 
 /**
  * Auto-rotation preview: simulate Next-Up pulls for up to `lineupCount` games
- * without mutating stack state.
+ * without mutating stack state. Advances a local partner map after each card so
+ * Lineup 2+ matches sequential startNextStackMatch pairings.
  */
 export function buildAutoPreviewLineups(
   stack: WinLoseStackState,
@@ -36,6 +37,7 @@ export function buildAutoPreviewLineups(
   let winners = [...stack.winnerStack];
   let losers = [...stack.loserStack];
   let nextUp: 'winners' | 'losers' = stack.nextUp;
+  let lastPartnerByPlayer = { ...stack.lastPartnerByPlayer };
   const lineups: string[][] = [];
   const count = Math.max(0, Math.floor(lineupCount));
 
@@ -43,9 +45,10 @@ export function buildAutoPreviewLineups(
     const due = nextUp === 'winners' ? winners : losers;
     if (due.length < WIN_LOSE_STACK_PLAYERS) break;
     const pulled = due.slice(0, WIN_LOSE_STACK_PLAYERS);
-    const paired = partnerSplitPairing(pulled, stack.lastPartnerByPlayer).playerIds;
+    const paired = partnerSplitPairing(pulled, lastPartnerByPlayer).playerIds;
     if (paired.length !== WIN_LOSE_STACK_PLAYERS) break;
     lineups.push(paired);
+    lastPartnerByPlayer = updateLastPartners(paired, lastPartnerByPlayer);
     if (nextUp === 'winners') {
       winners = winners.slice(WIN_LOSE_STACK_PLAYERS);
     } else {
